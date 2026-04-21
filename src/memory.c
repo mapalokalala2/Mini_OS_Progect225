@@ -17,10 +17,21 @@ typedef struct memory_block
 static memory_block *memory_head = NULL;
 static int total_memory = 0;
 
+static void memory_clear_list(void) {
+    memory_block *current = memory_head;
+    while (current) {
+        memory_block *next = current->next;
+        free(current);
+        current = next;
+    }
+    memory_head = NULL;
+}
+
 void memory_init(void) {
     // this function will clear memory state and initialize memory-management data
+    memory_clear_list();
     total_memory = MEMORY_SIZE;
-    memory_head = malloc(sizeof(memory_block));
+    memory_head = (memory_block *)malloc(sizeof(memory_block));
     memory_head->start = 0;
     memory_head->size = MEMORY_SIZE;
     memory_head->free = 1;
@@ -30,6 +41,9 @@ void memory_init(void) {
 
 int memory_allocation(int pid, int size) {
     // this fuction will locate free block and assign memory to process pid
+        if (size <= 0 || size > MEMORY_SIZE) {
+            return -1;
+        }
         memory_block *current = memory_head;
         while(current){
             if(current->free && current->size >= size){
@@ -44,6 +58,7 @@ int memory_allocation(int pid, int size) {
                 current->free = 0;
                 current->pid = pid;
                 current->size = size;
+                log_event("Memory allocated: %d bytes for PID %d at address %d", size, pid, current->start);
                 return current->start;
             }
             current = current->next;
