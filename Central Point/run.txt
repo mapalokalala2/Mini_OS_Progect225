@@ -1,0 +1,3 @@
+gcc -g -I include "Central Point/main.c" src/pcb.c src/scheduler.c src/memory.c src/banker.c src/logger.c -o mini_os.exe
+
+use this if you want to run the code

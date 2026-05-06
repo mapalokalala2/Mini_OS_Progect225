@@ -48,7 +48,7 @@ int main(void) {
     char name[MAX_NAME_LEN];
     sched sched_type;
 
-    while(choice != 10) {
+    while(choice != 9) {
         view_menu();
         printf("Enter your choice: ");
         
@@ -78,14 +78,16 @@ int main(void) {
                 break;
             case 2:
                 list_of_processes();
-                printf("would you like to delete a process? (y/n): ");
-                char del_choice;
-                scanf(" %c", &del_choice);
-                if (del_choice == 'y'|| del_choice == 'Y') {
-                    printf("Enter PID of process to delete: ");
-                    int del_pid;
-                    scanf("%d", &del_pid);
-                    delete_process(del_pid);
+                if(get_process_count() != 0) {
+                    printf("would you like to delete a process? (y/n): ");
+                    char del_choice;
+                    scanf(" %c", &del_choice);
+                    if (del_choice == 'y'|| del_choice == 'Y') {
+                        printf("Enter PID of process to delete: ");
+                        int del_pid;
+                        scanf("%d", &del_pid);
+                        delete_process(del_pid);
+                    }
                 }
 
                 break;

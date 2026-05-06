@@ -1,13 +1,17 @@
 CC	= gcc
 CFLAGS	= -Wall -g -I include
-SRC	= $(wildcard src/*.c)
+# Added "Central Point/main.c" to the source list so the compiler finds your main function
+SRC	= "Central Point/main.c" $(wildcard src/*.c)
 OBJ	= $(SRC:.c=.o)
-TARGET	= mini_os
+TARGET	= mini_os.exe
 
 all: $(TARGET)
 
 $(TARGET): $(SRC)
 	$(CC) $(CFLAGS) $(SRC) -o $(TARGET)
 
+run: $(TARGET)
+	./$(TARGET)
+
 clean:
-	rm -f $(TARGET) $(OBJ)
+	del /f $(TARGET) $(OBJ)

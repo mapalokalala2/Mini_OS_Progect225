@@ -1,0 +1,17 @@
+==========Logger initalized==========
+[2026-05-06 18 : 36 : 10]The system was initalised
+[2026-05-06 18 : 36 : 10]Memory initialized with size 1024 bytes
+[2026-05-06 18 : 36 : 10]Mini OS initialized successfully.
+==========Logger initalized==========
+[2026-05-06 18 : 41 : 18]The system was initalised
+[2026-05-06 18 : 41 : 18]Memory initialized with size 1024 bytes
+[2026-05-06 18 : 41 : 18]Mini OS initialized successfully.
+[2026-05-06 18 : 41 : 54]Memory allocated: 24 bytes for PID 1 at address 0
+[2026-05-06 18 : 41 : 54]process created successfully
+[2026-05-06 18 : 42 : 15]Memory allocated: 3 bytes for PID 2 at address 24
+[2026-05-06 18 : 42 : 15]process created successfully
+[2026-05-06 18 : 43 : 48]scheduler done. Time = 27 utilisation = 100.00%
+[2026-05-06 18 : 44 : 18]process '1' named 'try 1' has been successfully DELETED
+[2026-05-06 18 : 44 : 18]Memory freed for PID 1 and adjacent blocks coalesced
+[2026-05-06 18 : 44 : 58]process '2' named 'david is making noise' has been successfully DELETED
+[2026-05-06 18 : 44 : 58]Memory freed for PID 2 and adjacent blocks coalesced

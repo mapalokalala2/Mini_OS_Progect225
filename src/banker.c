@@ -43,6 +43,12 @@ void resource_init(int types, int total[]) {
         available[i] = total[i];
         total_resources[i] = total[i];
     }
+    // Ensure remaining resource slots are zeroed
+    for (int i = types; i < MAX_RESOURCES; i++) {
+        available[i] = 0;
+        total_resources[i] = 0;
+    }
+
     memset(max_claim, 0, sizeof(max_claim));
     memset(allocation, 0, sizeof(allocation));
     memset(need, 0, sizeof(need));
@@ -144,7 +150,7 @@ void show_resources(void) {
     }
 }
 
-int safety_check(int pid, int request[]) {
+bool safety_check(int pid, int request[]) {
     pcb *table = get_process_table();
     int work[MAX_RESOURCES];
     bool finish[MAX_PROCESSES] = {false};
@@ -185,8 +191,8 @@ int safety_check(int pid, int request[]) {
 
     for (int i = 0; i < MAX_PROCESSES; i++) {
         if (!finish[i]) {
-            return 0; // Not safe
+            return false; // Not safe
         }
     }
-    return 1; // Safe
+    return true; // Safe
  }
