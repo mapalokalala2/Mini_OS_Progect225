@@ -81,4 +81,4 @@ void list_shared_memory(void);
 void show_ipc_statistics(void);
 void log_ipc_event(const char *event);
 
-#endif // IPC_H
+#endif

@@ -10,26 +10,180 @@
 //The Banker's Algorithm is a resource allocation and deadlock avoidance algorithm that tests for safety by simulating 
 //the allocation of predetermined maximum possible amounts of all resources, and then makes an "s-state" check to test for possible activities before deciding whether allocation should be allowed to continue.
 
-
+//we will be using bankers algerithm, which is a reasorce allocation and deadlock avoidance strategy.it will woke 
+//by simulating the allocation of resorceses and only granting a request if the resulting staed is safe.
 #include <stdbool.h>
 #include <string.h>
 #include "../include/os.h"
 #include "../include/logger.h"
 #include "../include/banker.h"
 
-bool banker_init(void) {
-    // TODO: setup available / max / allocation matrices
 
-    return true;
+static int available[MAX_RESOURCES];
+static int max_claim[MAX_PROCESSES][MAX_RESOURCES];
+static int allocation[MAX_PROCESSES][MAX_RESOURCES];
+static int need[MAX_PROCESSES][MAX_RESOURCES];
+static int total_resources[MAX_RESOURCES];
+
+static int find_process_index(int pid){
+    for (int i = 0; i < get_process_count(); i++) {
+        if(get_process_table()[i].pid == pid) {
+            return i;
+        } 
+    }
+    return -1; // not found
 }
 
-bool banker_request(int pid, int request_size) {
-    // TODO: evaluate safety algorithm and either allocate or deny
-    (void)pid; (void)request_size;
-    return false;
+void resource_init(int types, int total[]) {
+    for (int i = 0; i < types; i++) {
+        available[i] = total[i];
+        total_resources[i] = total[i];
+    }
+    memset(max_claim, 0, sizeof(max_claim));
+    memset(allocation, 0, sizeof(allocation));
+    memset(need, 0, sizeof(need));
+    log_event("Banker's Algorithm initialized with %d resource types.", types);
 }
 
-void banker_release(int pid) {
-    // TODO: release resources held by pid
-    (void)pid;
+int set_max_claim(int pid, int max[]) {
+    int index = find_process_index(pid);
+    if (index == -1) {
+        log_event("Error: Process %d not found when setting max claim.", pid);
+        return -1;
+    }
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        max_claim[index][i] = max[i];
+        need[index][i] = max[i]; // initially, need is equal to max claim
+    }
+    log_event("Max claim set for process %d.", pid);
+    return 0;
 }
+
+bool request_resources(int pid, int request[]) {
+    int index = find_process_index(pid);
+    if (index == -1) {
+        log_event("Error: Process %d not found when requesting resources.", pid);
+        return false;
+    }
+    // Check if request is less than need
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        if (request[i] > need[index][i]) {
+            log_event("Process %d requested more than its declared maximum claim.", pid);
+            return false;
+        }
+    }
+    // Check if request is less than available
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        if (request[i] > available[i]) {
+            log_event("Process %d requested resources that are not currently available.", pid);
+            return false;
+        }
+    }
+    // Simulate allocation
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        available[i] -= request[i];
+        allocation[index][i] += request[i];
+        need[index][i] -= request[i];
+    }
+    // Check for safety
+    if (safety_check(pid, request)) {
+        log_event("Resources allocated to process %d.", pid);
+        return true;
+    } else {
+        // Rollback allocation
+        for (int i = 0; i < MAX_RESOURCES; i++) {
+            available[i] += request[i];
+            allocation[index][i] -= request[i];
+            need[index][i] += request[i];
+        }
+        log_event("Resource request by process %d denied to avoid unsafe state.", pid);
+        return false;
+    }
+}
+
+void release_resources(int pid, int release[]) {
+    int index = find_process_index(pid);
+    if (index == -1) {
+        log_event("Error: Process %d not found when releasing resources.", pid);
+        return;
+    }
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        if (release[i] > allocation[index][i]) {
+            log_event("Process %d attempted to release more resources than allocated.", pid);
+            return;
+        }
+    }
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        available[i] += release[i];
+        allocation[index][i] -= release[i];
+        need[index][i] += release[i];
+    }
+    log_event("Process %d released resources.", pid);
+}
+
+void show_resources(void) {
+    printf("Available Resources:\n");
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        printf("Resource %d: %d\n", i, available[i]);
+    }
+    printf("\nProcess Allocations and Needs:\n");
+    for (int i = 0; i < get_process_count(); i++) {
+        printf("Process %d (PID %d):\n", i, get_process_table()[i].pid);
+        printf("  Allocation: ");
+        for (int j = 0; j < MAX_RESOURCES; j++) {
+            printf("%d ", allocation[i][j]);
+        }
+        printf("\n  Need: ");
+        for (int j = 0; j < MAX_RESOURCES; j++) {
+            printf("%d ", need[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+int safety_check(int pid, int request[]) {
+    int n = get_process_count();
+    int work[MAX_RESOURCES];
+    bool finish[MAX_PROCESSES] = {false};
+    int index = find_process_index(pid);
+
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        work[i] = available[i];
+    }
+
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        finish[i] = (get_process_table()[i].pid == -1) ? true : false;
+    }
+
+    while (true) {
+        bool found = false;
+        for (int i = 0; i < n; i++) {
+            if (!finish[i]) {
+                bool can_finish = true;
+                for (int j = 0; j < MAX_RESOURCES; j++) {
+                    if (need[i][j] > work[j]) {
+                        can_finish = false;
+                        break;
+                    }
+                }
+                if (can_finish) {
+                    for (int j = 0; j < MAX_RESOURCES; j++) {
+                        work[j] += allocation[i][j];
+                    }
+                    finish[i] = true;
+                    found = true;
+                }
+            }
+        }
+        if (!found) {
+            break;
+        }
+    }
+
+    for (int i = 0; i < n; i++) {
+        if (!finish[i]) {
+            return 0; // Not safe
+        }
+    }
+    return 1; // Safe
+ }

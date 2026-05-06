@@ -10,4 +10,4 @@ pcb *pcb_get_table(int pid);
 int pcb_add(const char *name, int burst, int priority, int mem_size);
 void pcb_print_all(void);
 
-#endif // PCB_H
+#endif 

@@ -1,5 +1,6 @@
 #ifndef BANKER_H
 #define BANKER_H
+#define MAX_RESOURCES 5
 
 #include "os.h"
 
@@ -12,4 +13,4 @@ int safety_check(int pid, int request[]);
 int set_max_claim(int pid, int max[]);
 
 
-#endif // BANKER_H
+#endif
