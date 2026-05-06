@@ -15,7 +15,7 @@ void log_init(void) {
     }
 
     fprintf(log_fp, "==========Logger initalized==========\n");
-    fflush(LOG_FILE);
+    fflush(log_fp);
 }
 
 void log_event(const char *log_msg, ...) { // note to self: the .... thells the function that is will take a format sting followed by any other numberof extra variables. 
@@ -24,7 +24,7 @@ void log_event(const char *log_msg, ...) { // note to self: the .... thells the 
     }
     // Getting the currect time
     time_t now = time(NULL);
-    struct time *t = localtime(&now);
+    struct tm *t = localtime(&now);
     char time_str[26];
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H : %M : %S", t);
 
@@ -35,7 +35,7 @@ void log_event(const char *log_msg, ...) { // note to self: the .... thells the 
         va_start(args, log_msg);// starts the process if reading extra variables
         vfprintf(log_fp ,log_msg, args); // this is a version of printf designed to work with va_list
         fprintf(log_fp, "\n");
-        fflush(LOG_FILE);//keeps the data safe without needing to close the file. it forces the log event to move from ram to hard drive
+        fflush(log_fp);//keeps the data safe without needing to close the file. it forces the log event to move from ram to hard drive
         va_end(args);//cleans up the memory used to track the arguments 
 
 

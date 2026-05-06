@@ -87,11 +87,12 @@ int pcb_add(const char *name, int burst, int priority, int mem_size) {
 void terminate_process(int pid){
     for(int i = 0; i <  MAX_PROCESSES ; i++){
         if(process_table[i].pid == pid) {
+            log_event("process '%d' named '%s' has been successfully TERMINATED", pid, process_table[i].name);
             memory_free(process_table[i].pid); 
             process_table[i].pid = 0; // Mark as empty for reuse, consistent with init_system
             process_table[i].state = TERMINATED;
             process_count--;
-            log_event("process '%d' named '%s' has been successfully TERMINATED", pid, process_table[i].name);
+            return; // Optimization: process found and terminated
         }
     }
 }

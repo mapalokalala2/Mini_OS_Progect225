@@ -20,7 +20,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
     // this loop will reset the environment before running the schedule
 
     for(int i = 0; i < n; i++){
-        if ( tbl[i].pid == -1){
+        if ( tbl[i].pid <= 0){
             continue;
         } 
         tbl[i].remaining_time = tbl[i].burst_time;// gives every process its full time back
@@ -35,7 +35,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
 
     if( sched_type == SCHED_FCFS){
         for(int i = 0; i < n; i++){
-            if (tbl[i].pid == -1){
+            if (tbl[i].pid <= 0){
                 continue;
             }
 
@@ -70,7 +70,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
         while(finished_count < active){
             pcb *pro = &tbl[i];
             
-            if (pro ->pid != -1 && pro ->remaining_time > 0){
+            if (pro ->pid > 0 && pro ->remaining_time > 0){
                 //calculation of how much time to give
                 int use = (pro ->remaining_time < time_quantum) ? pro ->remaining_time : time_quantum;
                 pro ->state = RUNNING;
@@ -106,7 +106,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
         while(finished_count < active){
             int highest_priority_index = -1;
             for(int j = 0; j < n; j++){
-                if(tbl[j].pid != -1 && tbl[j].remaining_time > 0){
+                if(tbl[j].pid > 0 && tbl[j].remaining_time > 0){
                     if(highest_priority_index == -1 || tbl[j].priority < tbl[highest_priority_index].priority){
                         highest_priority_index = j;
                     }
@@ -134,7 +134,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
 
     int total_tat = 0, total_wt = 0, stats_active = 0;
     for(int i = 0; i < n; i++){
-        if (tbl[i].pid == -1){
+        if (tbl[i].pid <= 0){
             continue;
         }
         int tat = process_complet[i] - tbl[i].arrival_time;

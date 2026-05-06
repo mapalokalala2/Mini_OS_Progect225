@@ -34,6 +34,7 @@ void memory_init(void) {
     memory_head = (memory_block *)malloc(sizeof(memory_block));
     memory_head->start = 0;
     memory_head->size = MEMORY_SIZE;
+    memory_head->pid = 0;
     memory_head->free = 1;
     memory_head->next = NULL;
     log_event("Memory initialized with size %d bytes", MEMORY_SIZE);

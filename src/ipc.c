@@ -213,7 +213,7 @@ int create_shared_memory(int owner_pid, int size, const char *data) {
         return -1;
     }
 
-    if (size > MAX_MSG_SIZE) {
+    if (size <= 0 || size > MAX_MSG_SIZE) {
         log_event("Shared memory size exceeds limit");
         return -1;
     }
@@ -299,7 +299,7 @@ int write_shared_memory(int shm_id, const char *data, int size) {
         return -1;
     }
 
-    if (size > MAX_MSG_SIZE) {
+    if (size <= 0 || size > MAX_MSG_SIZE) {
         return -1;
     }
 

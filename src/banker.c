@@ -26,7 +26,7 @@ static int need[MAX_PROCESSES][MAX_RESOURCES];
 static int total_resources[MAX_RESOURCES];
 
 static int find_process_index(int pid){
-    for (int i = 0; i < get_process_count(); i++) {
+    for (int i = 0; i < MAX_PROCESSES; i++) {
         if(get_process_table()[i].pid == pid) {
             return i;
         } 
@@ -35,6 +35,10 @@ static int find_process_index(int pid){
 }
 
 void resource_init(int types, int total[]) {
+    if (types > MAX_RESOURCES) {
+        log_event("Warning: Attempted to initialize %d resources. Capped at %d.", types, MAX_RESOURCES);
+        types = MAX_RESOURCES;
+    }
     for (int i = 0; i < types; i++) {
         available[i] = total[i];
         total_resources[i] = total[i];
@@ -122,42 +126,41 @@ void release_resources(int pid, int release[]) {
 }
 
 void show_resources(void) {
-    printf("Available Resources:\n");
+    printf("\nAvailable Resources:\n");
     for (int i = 0; i < MAX_RESOURCES; i++) {
         printf("Resource %d: %d\n", i, available[i]);
     }
     printf("\nProcess Allocations and Needs:\n");
-    for (int i = 0; i < get_process_count(); i++) {
-        printf("Process %d (PID %d):\n", i, get_process_table()[i].pid);
-        printf("  Allocation: ");
-        for (int j = 0; j < MAX_RESOURCES; j++) {
-            printf("%d ", allocation[i][j]);
+    pcb *table = get_process_table();
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (table[i].pid != 0) {
+            printf("Process Index %d (PID %d):\n", i, table[i].pid);
+            printf("  Allocation: ");
+            for (int j = 0; j < MAX_RESOURCES; j++) printf("%d ", allocation[i][j]);
+            printf("\n  Need:       ");
+            for (int j = 0; j < MAX_RESOURCES; j++) printf("%d ", need[i][j]);
+            printf("\n");
         }
-        printf("\n  Need: ");
-        for (int j = 0; j < MAX_RESOURCES; j++) {
-            printf("%d ", need[i][j]);
-        }
-        printf("\n");
     }
 }
 
 int safety_check(int pid, int request[]) {
-    int n = get_process_count();
+    pcb *table = get_process_table();
     int work[MAX_RESOURCES];
     bool finish[MAX_PROCESSES] = {false};
-    int index = find_process_index(pid);
 
     for (int i = 0; i < MAX_RESOURCES; i++) {
         work[i] = available[i];
     }
 
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        finish[i] = (get_process_table()[i].pid == -1) ? true : false;
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        // If slot is empty, treat as already finished
+        finish[i] = (table[i].pid == 0);
     }
 
     while (true) {
         bool found = false;
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < MAX_PROCESSES; i++) {
             if (!finish[i]) {
                 bool can_finish = true;
                 for (int j = 0; j < MAX_RESOURCES; j++) {
@@ -180,7 +183,7 @@ int safety_check(int pid, int request[]) {
         }
     }
 
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < MAX_PROCESSES; i++) {
         if (!finish[i]) {
             return 0; // Not safe
         }
