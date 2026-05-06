@@ -5,7 +5,7 @@
 #include "../include/scheduler.h"
 #include "../include/os.h"
 
-static int process_complet[MAX_PROCESSES]; // static because its valuse must persist in memory. stores when each process finsishes executing.
+static int process_complete[MAX_PROCESSES]; // static because its valuse must persist in memory. stores when each process finishes executing.
 
 
 int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int max_segments) {
@@ -26,7 +26,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
         tbl[i].remaining_time = tbl[i].burst_time;// gives every process its full time back
         tbl[i].state =  READY;
         total_burst_time += tbl[i].burst_time;
-        process_complet[i] = 0;
+        process_complete[i] = 0;
     }
     
 // ========================================================
@@ -53,7 +53,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
             time += pro ->burst_time;
             pro ->remaining_time = 0;
             pro ->state = TERMINATED;
-    process_complet[i] = time;
+    process_complete[i] = time;
 
 
         }
@@ -88,7 +88,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
                 if( pro ->remaining_time == 0){
                     pro->state = TERMINATED;
                     finished_count++;
-                    process_complet[i] = time;
+                    process_complete[i] = time;
                 }else{
                     pro ->state = READY;
                 }
@@ -126,7 +126,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
                 time += pro ->burst_time;
                 pro ->remaining_time = 0;
                 pro ->state = TERMINATED;
-                process_complet[highest_priority_index] = time;
+                process_complete[highest_priority_index] = time;
                 finished_count++;
             }
         }
@@ -137,7 +137,7 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
         if (tbl[i].pid <= 0){
             continue;
         }
-        int tat = process_complet[i] - tbl[i].arrival_time;
+        int tat = process_complete[i] - tbl[i].arrival_time;
         int wt = tat - tbl[i].burst_time;
         total_tat += tat;
         total_wt += wt;

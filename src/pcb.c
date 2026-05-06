@@ -71,14 +71,14 @@ void pcb_init_table(void) {
     process_count = 0;
 }
 
-pcb *pcb_get_table(int pid) {
-    for (int i = 0; i < MAX_PROCESSES; i++) {
-        if (process_table[i].pid == pid) {
-            return &process_table[i];
-        }
-    }
-    return NULL;
-}
+// pcb *pcb_get_table(int pid) {
+//     for (int i = 0; i < MAX_PROCESSES; i++) {
+//         if (process_table[i].pid == pid) {
+//             return &process_table[i];
+//         }
+//     }
+//     return NULL;
+// }
 
 int pcb_add(const char *name, int burst, int priority, int mem_size) {
     return create_process(name, burst, priority, mem_size);
@@ -129,4 +129,29 @@ pcb *get_process_table(void){
 
 int get_process_count(void){
     return process_count;
+}
+
+void delete_process(int pid) {
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (process_table[i].pid == pid) {
+            log_event("process '%d' named '%s' has been successfully DELETED", pid, process_table[i].name);
+            memory_free(process_table[i].pid); 
+            process_table[i].pid = 0; // Mark as empty for reuse, consistent with init_system
+            process_table[i].state = TERMINATED;
+            process_count--;
+            return; // Optimization: process found and deleted
+        }
+    }
+}
+
+void delete_all_processes(void) {
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (process_table[i].pid != 0) {
+            log_event("process '%d' named '%s' has been successfully DELETED", process_table[i].pid, process_table[i].name);
+            memory_free(process_table[i].pid); 
+            process_table[i].pid = 0; // Mark as empty for reuse, consistent with init_system
+            process_table[i].state = TERMINATED;
+        }
+    }
+    process_count = 0;
 }

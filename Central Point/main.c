@@ -5,63 +5,120 @@
 #include "../include/memory.h"
 #include "../include/banker.h"
 #include "../include/logger.h"
-#include "../include/ipc.h"
+
+static segment segs [MAX_SEGMENTS];
+
+// Glue functions to match os.h declarations with module implementations
+void show_memory(void) {
+    memory_display();
+}
+
+void show_logs(void) {
+    show_log();
+}
+
+void view_menu(void) {
+    printf("\n================ Mini OS Menu ===============\n");
+    printf(" Welcome to the Mini OS!\n");
+    printf(" 1. Create an EMERGENCY Process\n");
+    printf(" 2. List Processes\n");
+    printf(" 3. Show Memory Map\n");
+    printf(" 4. Show System Logs\n");
+    printf(" 5. Run Scheduler (Round Robin)\n");
+    printf(" 6. Run Scheduler (FCFS)\n");
+    printf(" 7. Run Scheduler (Priority)\n");
+    printf(" 8. Deadlock handling\n");
+    printf(" 9. Exit\n");
+    printf("==============================================\n");
+}
+    
+
 
 int main(void) {
-    // 1. Initialize system and modules
+    // this is the initialisation of the system, it will call all the init functions for the different modules
+    log_init(); 
     init_system();
-    pcb_init_table();
     memory_init();
-    log_init();
-    ipc_init();
+    
 
-    // 2. Sample process creation + scheduler call
-    // TODO: create actual process requests using create_process()
-    // TODO: use scheduler_run(SCHED_FCFS, 0) and scheduler_run(SCHED_ROUNDROBIN, quantum)
+    log_event("Mini OS initialized successfully.");
+    printf("Mini OS initialized successfully.\n");
+    int choice = 1;
+    int burst, priority, mem, pid, time_quantum;
+    char name[MAX_NAME_LEN];
+    sched sched_type;
 
-    printf("Mini OS skeleton started.\n");
-
-    // 3. Display state
-    list_processes();
-    show_memory();
-    show_logs();
-
-    // 4. Demonstrate IPC functionality
-    printf("\n--- IPC Demonstration ---\n");
-
-    // Create some sample processes for IPC demo
-    int pid1 = create_process("Dispatch", 5, 1, 100);
-    int pid2 = create_process("Response", 8, 2, 150);
-    int pid3 = create_process("Monitor", 3, 1, 80);
-
-    if (pid1 >= 0 && pid2 >= 0 && pid3 >= 0) {
-        // Demonstrate message queues
-        printf("Sending messages between processes...\n");
-        send_message(pid1, pid2, 1, "Emergency alert: Fire reported");
-        send_message(pid1, pid3, 2, "Sensor data: Temperature=85C");
-        send_message(pid2, pid1, 3, "Response team dispatched");
-
-        // Demonstrate pipes
-        printf("Creating pipe for data streaming...\n");
-        int pipe_id = create_pipe(pid1, pid2);
-        if (pipe_id >= 0) {
-            write_to_pipe(pipe_id, "Real-time sensor data stream");
+    while(choice != 10) {
+        view_menu();
+        printf("Enter your choice: ");
+        
+        if (scanf("%d", &choice) != 1) {
+            printf("Invalid input. Please enter a number.\n");
+            while (getchar() != '\n'); // Clear the input buffer
+            continue;
         }
 
-        // Demonstrate shared memory
-        printf("Creating shared memory segment...\n");
-        int shm_id = create_shared_memory(pid1, 200, "Incident Database");
-        if (shm_id >= 0) {
-            attach_shared_memory(shm_id, pid2);
-            attach_shared_memory(shm_id, pid3);
-        }
+        switch(choice) {
+            case 1:
+                printf("YOU HAVE SELECTED TO CREATE AN EMERGENCY PROCESS\n");
+                printf("Enter process name: ");
+                // Clear the newline character left in the buffer by the previous scanf
+                while (getchar() != '\n'); 
+                // Read the entire line, including spaces, up to MAX_NAME_LEN-1 characters
+                fgets(name, MAX_NAME_LEN, stdin);
+                name[strcspn(name, "\n")] = 0; // Remove the trailing newline character if present
+                printf("Enter burst time: ");
+                scanf("%d", &burst);
+                printf("Enter priority (lower number = higher priority)(1-10): ");
+                scanf("%d", &priority);
+                printf("Enter memory size: ");
+                scanf("%d", &mem);
+                pid = create_process(name, burst, priority, mem);
+                printf("Process created with PID: %d\n", pid);
+                break;
+            case 2:
+                list_of_processes();
+                printf("would you like to delete a process? (y/n): ");
+                char del_choice;
+                scanf(" %c", &del_choice);
+                if (del_choice == 'y'|| del_choice == 'Y') {
+                    printf("Enter PID of process to delete: ");
+                    int del_pid;
+                    scanf("%d", &del_pid);
+                    delete_process(del_pid);
+                }
 
-        // Display IPC status
-        printf("\nIPC System Status:\n");
-        list_messages();
-        list_pipes();
-        list_shared_memory();
-        show_ipc_statistics();
+                break;
+            case 3:
+                show_memory();
+                break;
+            case 4:
+                show_logs();
+                break;
+            case 5:
+                // Run Scheduler (Round Robin)
+                printf("Enter time quantum: ");
+                scanf("%d", &time_quantum);
+                scheduler_selection(SCHED_ROUNDROBIN, time_quantum, segs, MAX_SEGMENTS);
+                break;
+            case 6:
+                // Run Scheduler (FCFS)
+                 scheduler_selection(SCHED_FCFS, 0, segs, MAX_SEGMENTS);
+                break;
+            case 7:
+                // Run Scheduler (Priority)
+                 scheduler_selection(SCHED_PRIORITY, 0, segs, MAX_SEGMENTS);
+                break;
+            case 8:
+                // Deadlock handling
+                show_resources();
+                break;
+            case 9:
+                printf("Exiting Mini OS...\n");
+                break;
+            default:
+                printf("Invalid choice. Please try again.\n");
+        }
     }
 
     return 0;

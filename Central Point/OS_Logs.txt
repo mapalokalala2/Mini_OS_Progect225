@@ -1,0 +1,37 @@
+==========Logger initalized==========
+[2026-05-06 17 : 17 : 43]The system was initalised
+[2026-05-06 17 : 17 : 43]Memory initialized with size 1024 bytes
+[2026-05-06 17 : 17 : 43]IPC system initialized
+[2026-05-06 17 : 17 : 43]Mini OS initialized successfully.
+[2026-05-06 17 : 18 : 36]Memory allocated: 9 bytes for PID 1 at address 0
+[2026-05-06 17 : 18 : 36]process created successfully
+[2026-05-06 17 : 19 : 07]Memory allocated: 13 bytes for PID 2 at address 9
+[2026-05-06 17 : 19 : 07]process created successfully
+[2026-05-06 17 : 20 : 44]scheduler done. Time = 7 utilisation = 100.00%
+==========Logger initalized==========
+[2026-05-06 17 : 31 : 13]The system was initalised
+[2026-05-06 17 : 31 : 13]Memory initialized with size 1024 bytes
+[2026-05-06 17 : 31 : 13]IPC system initialized
+[2026-05-06 17 : 31 : 13]Mini OS initialized successfully.
+==========Logger initalized==========
+[2026-05-06 17 : 31 : 55]The system was initalised
+[2026-05-06 17 : 31 : 55]Memory initialized with size 1024 bytes
+[2026-05-06 17 : 31 : 55]IPC system initialized
+[2026-05-06 17 : 31 : 55]Mini OS initialized successfully.
+[2026-05-06 17 : 32 : 39]Memory allocated: 77 bytes for PID 1 at address 0
+[2026-05-06 17 : 32 : 39]process created successfully
+==========Logger initalized==========
+[2026-05-06 17 : 33 : 04]The system was initalised
+[2026-05-06 17 : 33 : 04]Memory initialized with size 1024 bytes
+[2026-05-06 17 : 33 : 04]IPC system initialized
+[2026-05-06 17 : 33 : 04]Mini OS initialized successfully.
+==========Logger initalized==========
+[2026-05-06 17 : 33 : 39]The system was initalised
+[2026-05-06 17 : 33 : 39]Memory initialized with size 1024 bytes
+[2026-05-06 17 : 33 : 39]IPC system initialized
+[2026-05-06 17 : 33 : 39]Mini OS initialized successfully.
+[2026-05-06 17 : 34 : 08]Memory allocated: 15 bytes for PID 1 at address 0
+[2026-05-06 17 : 34 : 08]process created successfully
+[2026-05-06 17 : 34 : 26]Memory allocated: 15 bytes for PID 2 at address 15
+[2026-05-06 17 : 34 : 26]process created successfully
+[2026-05-06 17 : 44 : 30]scheduler done. Time = 12 utilisation = 100.00%

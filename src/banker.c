@@ -39,7 +39,7 @@ void resource_init(int types, int total[]) {
         log_event("Warning: Attempted to initialize %d resources. Capped at %d.", types, MAX_RESOURCES);
         types = MAX_RESOURCES;
     }
-    for (int i = 0; i < types; i++) {
+    for (int i = 0; i < types; i++) { 
         available[i] = total[i];
         total_resources[i] = total[i];
     }
