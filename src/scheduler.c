@@ -107,8 +107,13 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
             int highest_priority_index = -1;
             for(int j = 0; j < n; j++){
                 if(tbl[j].pid > 0 && tbl[j].remaining_time > 0){
-                    if(highest_priority_index == -1 || tbl[j].priority < tbl[highest_priority_index].priority){
+                    if(highest_priority_index == -1 || tbl[j].priority < tbl[highest_priority_index].priority) {
                         highest_priority_index = j;
+                    } else if (tbl[j].priority == tbl[highest_priority_index].priority) {
+                        // Tie-breaker: use arrival time just incase two processes have the same priority, the one that arrived first gets scheduled first.
+                        if (tbl[j].arrival_time < tbl[highest_priority_index].arrival_time) {
+                            highest_priority_index = j;
+                        }
                     }
                 }
             }

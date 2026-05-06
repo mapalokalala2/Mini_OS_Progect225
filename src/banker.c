@@ -95,8 +95,8 @@ bool request_resources(int pid, int request[]) {
         allocation[index][i] += request[i];
         need[index][i] -= request[i];
     }
-    // Check for safety
-    if (safety_check(pid, request)) {
+    // Check for safety of the new state
+    if (safety_check()) {
         log_event("Resources allocated to process %d.", pid);
         return true;
     } else {
@@ -131,7 +131,7 @@ void release_resources(int pid, int release[]) {
     log_event("Process %d released resources.", pid);
 }
 
-void show_resources(void) {
+void show_resources(void) { // No change needed here, just context for the next diff
     printf("\nAvailable Resources:\n");
     for (int i = 0; i < MAX_RESOURCES; i++) {
         printf("Resource %d: %d\n", i, available[i]);
@@ -150,7 +150,7 @@ void show_resources(void) {
     }
 }
 
-bool safety_check(int pid, int request[]) {
+bool safety_check(void) { // Removed unused parameters
     pcb *table = get_process_table();
     int work[MAX_RESOURCES];
     bool finish[MAX_PROCESSES] = {false};
