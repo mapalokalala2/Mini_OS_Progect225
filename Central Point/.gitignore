@@ -1,0 +1,8 @@
+# Ignore VS Code specific files and folders
+.vscode/
+
+# Ignore executable files
+*.exe
+
+# Ignore text files
+*.txt

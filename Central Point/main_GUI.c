@@ -1,0 +1,546 @@
+#include <stdio.h>
+#include <gtk/gtk.h>
+#include <cairo.h>
+#include <time.h>
+#include <stdarg.h>
+#include "../include/os.h"
+#include "../include/pcb.h"
+#include "../include/scheduler.h"
+#include "../include/memory.h"
+#include "../include/banker.h"
+#include "../include/logger.h"
+
+// Global variables
+static GtkWidget *window;
+static GtkWidget *Text_output;
+static GtkWidget *quantum_entry;
+static GtkWidget *pid_entry;
+static GtkWidget *draw_area;
+static GtkWidget *gantt_frame;
+static GtkWidget *gantt_label;
+static GtkWidget *total_memory_label;
+static GtkWidget *used_memory_label;
+static GtkWidget *allocated_memory_label;
+static GtkWidget *memory_progress_bar;
+
+static segment segs [MAX_SEGMENTS];
+static int num_segments = 0;
+
+static char* get_timestamp() {
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    static char timestamp[64]; // Increased buffer size for safety
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
+    return timestamp;
+}
+
+static void append_text(const char *text) {
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(Text_output));
+    GtkTextIter end;
+    gtk_text_buffer_get_end_iter(buffer, &end);
+    gtk_text_buffer_insert(buffer, &end, text, -1);
+    gtk_text_buffer_insert(buffer, &end, "\n", -1);
+}
+
+static void append_fmt(const char *format, ...) {
+    char buffer[256];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    append_text(buffer);
+}
+
+static void append_output(const char *format, ...) {
+    char buffer[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    append_text(buffer);
+}
+
+static void update_memory_display() {
+    int total_memory = MEMORY_SIZE, used = 0;
+    pcb *processes = get_process_table();
+    int count = get_process_count();
+
+    for (int i = 0; i < count; i++) {
+        if (processes[i].state != TERMINATED && processes[i].pid != -1) {
+            used += processes[i].mem_size;
+        }
+    }
+
+    int available = total_memory - used;
+    char mem_info[256];
+    snprintf(mem_info, sizeof(mem_info), "Total: %d KB", total_memory);
+    gtk_label_set_text(GTK_LABEL(total_memory_label), mem_info); // Shows total memory
+    snprintf(mem_info, sizeof(mem_info), "Used: %d KB", used);
+    gtk_label_set_text(GTK_LABEL(used_memory_label), mem_info); // Shows used memory
+    snprintf(mem_info, sizeof(mem_info), "Available: %d KB", available);
+    gtk_label_set_text(GTK_LABEL(allocated_memory_label), mem_info); // Shows available memory
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(memory_progress_bar), (double)used / total_memory);
+}
+
+static void view_processes_creation_dialog(){
+    GtkWidget *dialog = gtk_dialog_new_with_buttons("Create Process", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Create", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
+    GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    GtkWidget *grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 5);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 5);
+    gtk_container_set_border_width(GTK_CONTAINER(grid), 10);
+
+    GtkWidget *name_label = gtk_label_new("Process Name:");
+    GtkWidget *name_entry = gtk_entry_new();
+    GtkWidget *burst_label = gtk_label_new("Burst Time:");
+    GtkWidget *burst_entry = gtk_entry_new();
+    GtkWidget *priority_label = gtk_label_new("Priority:");
+    GtkWidget *priority_entry = gtk_entry_new();
+    GtkWidget *memory_label = gtk_label_new("Memory Size (KB):");
+    GtkWidget *memory_entry = gtk_entry_new();
+
+    gtk_grid_attach(GTK_GRID(grid), name_label, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), name_entry, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), burst_label, 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), burst_entry, 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), priority_label, 0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), priority_entry, 1, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), memory_label, 0, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), memory_entry, 1, 3, 1, 1);
+
+    gtk_container_add(GTK_CONTAINER(content_area), grid);
+    gtk_widget_show_all(dialog);
+
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        const char *name = gtk_entry_get_text(GTK_ENTRY(name_entry));
+        int burst_time = atoi(gtk_entry_get_text(GTK_ENTRY(burst_entry)));
+        int priority = atoi(gtk_entry_get_text(GTK_ENTRY(priority_entry)));
+        int mem_size = atoi(gtk_entry_get_text(GTK_ENTRY(memory_entry)));
+
+        if (strlen(name) == 0 || burst_time <= 0 || priority < 0 || mem_size <= 0) {
+            GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(dialog), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid input. Please enter valid values.");
+            gtk_dialog_run(GTK_DIALOG(error_dialog));
+            gtk_widget_destroy(error_dialog);
+        } else {
+            int pid = create_process(name, burst_time, priority, mem_size);
+            if (pid != -1) {
+                append_fmt("[%s] Process created: PID=%d, Name=%s, Burst=%d, Priority=%d, Memory=%d KB", get_timestamp(), pid, name, burst_time, priority, mem_size);
+                update_memory_display();
+            } else {
+                GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(dialog), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Failed to create process. Not enough memory or process table full.");
+                gtk_dialog_run(GTK_DIALOG(error_dialog));
+                gtk_widget_destroy(error_dialog);
+            }
+        }
+    }
+
+    gtk_widget_destroy(dialog);
+}
+
+void on_create_process_clicked(GtkButton *button, gpointer user_data) {
+    view_processes_creation_dialog();
+}
+
+void on_list_processes_clicked(GtkButton *button, gpointer user_data) {
+    append_fmt("[%s] Listing processes:", get_timestamp()); // Changed to append_fmt for timestamp
+    pcb *processes = get_process_table();
+
+    append_text("PID | Name           | Priority | Burst Time | Remaining Time | State     | Memory (KB)");
+    append_text("----|----------------|----------|------------|----------------|-----------|-------------");
+    
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (processes[i].pid != 0) {
+            const char *state_str;
+            switch (processes[i].state) {
+                case NEW: state_str = "NEW"; break;
+                case READY: state_str = "READY"; break;
+                case RUNNING: state_str = "RUNNING"; break;
+                case WAITING: state_str = "WAITING"; break;
+                case TERMINATED: state_str = "TERMINATED"; break;
+                default: state_str = "UNKNOWN"; break;
+            }
+            append_fmt("%3d | %-14s | %8d | %10d | %14d | %-9s | %11d", processes[i].pid, processes[i].name, processes[i].priority, processes[i].burst_time, processes[i].remaining_time, state_str, processes[i].mem_size);
+        }
+    }
+    update_memory_display();
+}
+
+void on_fcfs_clicked(GtkButton *button, gpointer user_data) {
+    num_segments = scheduler_selection(SCHED_FCFS, 0, segs, MAX_SEGMENTS);
+    gtk_widget_show_all(gantt_frame);
+    gtk_widget_queue_draw(draw_area);
+    append_fmt("[%s] Starting First-Come-First-Serve scheduling", get_timestamp());
+    update_memory_display();
+
+}
+
+void on_rr_clicked(GtkButton *button, gpointer user_data) {
+    int time_quantum = atoi(gtk_entry_get_text(GTK_ENTRY(quantum_entry)));
+    if (time_quantum <= 0) {
+        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid time quantum. Please enter a positive integer.");
+        gtk_dialog_run(GTK_DIALOG(error_dialog));
+        gtk_widget_destroy(error_dialog);
+        return;
+    }
+    append_fmt("[%s] Starting Round Robin scheduling with time quantum: %d", get_timestamp(), time_quantum);
+    num_segments = scheduler_selection(SCHED_ROUNDROBIN, time_quantum, segs, MAX_SEGMENTS);
+    gtk_widget_show_all(gantt_frame);
+    gtk_widget_queue_draw(draw_area);
+    update_memory_display();
+}
+
+
+
+void on_priority_clicked(GtkButton *button, gpointer user_data) {
+    num_segments = scheduler_selection(SCHED_PRIORITY, 0, segs, MAX_SEGMENTS);
+    gtk_widget_show_all(gantt_frame);
+    gtk_widget_queue_draw(draw_area);
+    append_fmt("[%s] Starting Priority scheduling", get_timestamp());
+    update_memory_display();
+}
+
+void on_terminate_process_clicked(GtkButton *button, gpointer user_data) {
+    int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_entry)));
+    if (pid < 0) {
+        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a non-negative integer.");
+        gtk_dialog_run(GTK_DIALOG(error_dialog));
+        gtk_widget_destroy(error_dialog);
+        return;
+    }
+    terminate_process(pid);
+    append_fmt("[%s] Terminated process with PID: %d", get_timestamp(), pid);
+    update_memory_display();
+}
+
+void on_show_memory_clicked(GtkButton *button, gpointer user_data) {
+    append_fmt("[%s] Showing memory map", get_timestamp());
+    append_text("PID   | Address    | Size (KB)  | Status");
+    append_text("------|------------|------------|--------------");
+    
+    pcb *processes = get_process_table();
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (processes[i].pid != 0 && processes[i].state != TERMINATED) {
+            append_fmt("%-5d | %-10d | %-10d | %-12s", 
+                       processes[i].pid,
+                       processes[i].mem_address, 
+                       processes[i].mem_size, 
+                       "Allocated");
+        }
+    }
+    update_memory_display();
+}
+
+void on_show_logs_clicked(GtkButton *button, gpointer user_data) {
+    append_fmt("[%s] Showing system logs", get_timestamp());
+    FILE *log_file = fopen("OS_Logs.txt", "r");
+    if (log_file == NULL) {
+        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Error opening system.log");
+        gtk_dialog_run(GTK_DIALOG(error_dialog));
+        gtk_widget_destroy(error_dialog);
+        return;
+    }
+    char line[256];
+    while (fgets(line, sizeof(line), log_file)) {
+        append_output("%s", line);
+    }
+    fclose(log_file);
+    update_memory_display();
+}
+
+void on_initalize_resources_clicked(GtkButton *button, gpointer user_data) {
+    int num_resources = MAX_RESOURCES; // Track how many are actually used
+    resource_init(num_resources, (int[]){10, 5, 7, 3, 8}); // Example initialization
+    append_fmt("[%s] Initialized resources with max values: RE_1: 10, RE_2: 5, RE_3: 7, RE_4: 3, RE_5: 8", get_timestamp());
+    update_memory_display();
+}
+
+void on_set_max_claim_clicked(GtkButton *button, gpointer user_data) {
+    int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_entry)));
+    if (pid < 0) {
+        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a non-negative integer.");
+        gtk_dialog_run(GTK_DIALOG(error_dialog));
+        gtk_widget_destroy(error_dialog);
+        return;
+    }
+    int max_vals[MAX_RESOURCES];
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        // Using simplified default values for GUI interaction
+        max_vals[i] = 5; 
+    }
+    set_max_claim(pid, max_vals);
+    append_fmt("[%s] Set max claim for process with PID: %d", get_timestamp(), pid);
+    update_memory_display();
+}
+
+void on_request_resources_clicked(GtkButton *button, gpointer user_data) {
+    int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_entry)));
+    if (pid < 0) {
+        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a non-negative integer.");
+        gtk_dialog_run(GTK_DIALOG(error_dialog));
+        gtk_widget_destroy(error_dialog);
+        return;
+    }
+    int request[MAX_RESOURCES];
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        // Simplified resource request for GUI demo
+        request[i] = 1;
+    }
+    request_resources(pid, request);
+    append_fmt("[%s] Process with PID: %d made a resource request", get_timestamp(), pid);
+    update_memory_display();
+}
+
+void on_release_resources_clicked(GtkButton *button, gpointer user_data) {
+    int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_entry)));
+    if (pid < 0) {
+        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a non-negative integer.");
+        gtk_dialog_run(GTK_DIALOG(error_dialog));
+        gtk_widget_destroy(error_dialog);
+        return;
+    }
+    int release[MAX_RESOURCES];
+    for (int i = 0; i < MAX_RESOURCES; i++) {
+        // Simplified resource release for GUI demo
+        release[i] = 1;
+    }
+    release_resources(pid, release);
+    append_fmt("[%s] Process with PID: %d made a resource release request", get_timestamp(), pid);
+    update_memory_display();
+}
+
+void on_show_resources_clicked(GtkButton *button, gpointer user_data) {
+    append_fmt("[%s] Showing current resource allocation and availability", get_timestamp());
+    show_resources();
+    update_memory_display();
+}
+
+void on_safety_check_clicked(GtkButton *button, gpointer user_data) {
+    append_fmt("[%s] Performing safety check", get_timestamp());
+    if (safety_check()) {
+        append_output("The system is in a safe state.\n");
+    } else {
+        append_output("The system is in an unsafe state.\n");
+    }
+    update_memory_display();
+}   
+
+void on_terminate_system_clicked(GtkButton *button, gpointer user_data) {
+    log_event("Mini OS Dashboard: Manual termination requested.");
+    log_dump(); // Ensure logs are flushed and closed properly
+    gtk_main_quit();
+}
+
+gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
+    int width = gtk_widget_get_allocated_width(widget);
+    int height = gtk_widget_get_allocated_height(widget);
+
+    // Fill background with deep black-gray
+    cairo_set_source_rgb(cr, 0.05, 0.05, 0.05);
+    cairo_paint(cr);
+
+    int segment_width = width / num_segments;
+    int total_time = 0;
+    for (int i = 0; i < num_segments; i++) {
+        total_time += segs[i].duration;
+    }
+    double scale = (total_time > 0) ? (double)width / total_time : 1.0;
+
+    // Phantom blue and gray palette for process blocks
+    double color_palette[10][3] = {
+        {0.2, 0.2, 0.3}, {0.3, 0.3, 0.4}, {0.4, 0.4, 0.5}, {0.5, 0.5, 0.6}, {0.6, 0.6, 0.7},
+        {0.25, 0.25, 0.35}, {0.35, 0.35, 0.45}, {0.45, 0.45, 0.55}, {0.55, 0.55, 0.65}, {0.65, 0.65, 0.75}
+    };
+    int color_index = 0;
+    int y = height / 4;
+    for (int i = 0; i < num_segments; i++) {
+        double seg_width = segs[i].duration * scale;
+        double x = segs[i].start_time * scale;
+        int color_idx = segs[i].pid % 10;
+        cairo_set_source_rgb(cr, color_palette[color_idx][0], color_palette[color_idx][1], color_palette[color_idx][2]);
+        cairo_rectangle(cr, x, y, seg_width, height / 4);
+        cairo_fill(cr);
+        color_index = (color_index + 1) % 10;
+
+        // Draw PID label
+        cairo_set_source_rgb(cr, 0.9, 0.9, 0.9); // Light gray for text
+        cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+        cairo_set_font_size(cr, 12);
+        char pid_str[16];
+        snprintf(pid_str, sizeof(pid_str), "%d", segs[i].pid);
+        cairo_move_to(cr, x + seg_width / 2 - 10, y + height / 8);
+        cairo_show_text(cr, pid_str);
+    }
+    return FALSE;
+}
+
+int main(int argc, char *argv[]) {
+    init_system();
+    memory_init();
+    log_init();
+    log_event("Mini OS initialized successfully.");
+
+    gtk_init(&argc, &argv);
+
+    // Apply Black and Gray CSS Styling
+    GtkCssProvider *provider = gtk_css_provider_new();
+    const char *css =
+        "window, box, grid { background-color: #0F0F1A; color: #BBBBBB; }" /* Very dark blue-black background, gray text */
+        "frame { background-color: #1A1A2A; border: 1px solid #3A3A4A; margin: 5px; }" /* Dark phantom blue frames */
+        "frame label { color: #BBBBBB; font-weight: bold; }" /* Gray frame labels */
+        "button { background-image: none; background-color: #2A2A3A; color: #DDDDDD; border: 1px solid #4A4A5A; border-radius: 4px; padding: 4px; }" /* Phantom blue buttons, lighter gray text */
+        "button:hover { background-color: #3A3A4A; }" /* Slightly lighter on hover */
+        "button:active { background-color: #1A1A2A; }" /* Darker on active */
+        "entry { background-color: #20202A; color: #DDDDDD; border: 1px solid #4A4A5A; caret-color: white; }" /* Dark phantom blue entry, lighter gray text */
+        "textview text { background-color: #05050F; color: #B0B0B0; font-family: monospace; }" /* Very dark blue-black textview, medium gray text */
+        "label { color: #BBBBBB; }" /* General labels are gray */
+        "progressbar trough { background-color: #2A2A3A; border: 1px solid #4A4A5A; }" /* Phantom blue progress bar trough */
+        "progressbar progress { background-image: none; background-color: #5A5A7A; }"; /* More vibrant phantom blue progress */
+
+    gtk_css_provider_load_from_data(provider, css, -1, NULL);
+    gtk_style_context_add_provider_for_screen(
+        gdk_screen_get_default(),
+        GTK_STYLE_PROVIDER(provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION
+    );
+    g_object_unref(provider);
+
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "MINI_OS Dashboard");
+    gtk_window_set_default_size(GTK_WINDOW(window), 1000, 850);
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(window), vbox);
+
+    // creation of buttons and other widgets are here, with their respective signal connections to the above callback functions
+
+    // 1. Memory Status Panel
+    GtkWidget *mem_frame = gtk_frame_new("Memory Status");
+    gtk_box_pack_start(GTK_BOX(vbox), mem_frame, FALSE, FALSE, 5);
+    GtkWidget *mem_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(mem_frame), mem_vbox);
+    total_memory_label = gtk_label_new("Total: 1024 KB"); // Corrected initial text
+    gtk_box_pack_start(GTK_BOX(mem_vbox), total_memory_label, FALSE, FALSE, 5);
+    used_memory_label = gtk_label_new("Used: 0 KB"); // Corrected initial text
+    gtk_box_pack_start(GTK_BOX(mem_vbox), used_memory_label, FALSE, FALSE, 5);
+    allocated_memory_label = gtk_label_new("Available: 1024 KB"); // Corrected initial text
+    gtk_box_pack_start(GTK_BOX(mem_vbox), allocated_memory_label, FALSE, FALSE, 5);
+    memory_progress_bar = gtk_progress_bar_new();
+    gtk_box_pack_start(GTK_BOX(mem_vbox), memory_progress_bar, FALSE, FALSE, 5);
+
+    // 2. Gantt Chart Panel
+    gantt_frame = gtk_frame_new("Gantt Chart");
+    gtk_box_pack_start(GTK_BOX(vbox), gantt_frame, TRUE, TRUE, 5);
+    draw_area = gtk_drawing_area_new();
+    gtk_widget_set_size_request(draw_area, 800, 200);
+    gtk_container_add(GTK_CONTAINER(gantt_frame), draw_area);
+    g_signal_connect(draw_area, "draw", G_CALLBACK(on_draw), NULL);
+    gtk_widget_hide(gantt_frame); // Hide until we have segments to display
+
+    // Create a horizontal box to hold Operations and Deadlock side-by-side
+    GtkWidget *mid_controls_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_box_pack_start(GTK_BOX(vbox), mid_controls_hbox, FALSE, FALSE, 5);
+
+    // 3. System Operations panel (Left side of hbox)
+    GtkWidget *operations_frame = gtk_frame_new("System Operations");
+    gtk_box_pack_start(GTK_BOX(mid_controls_hbox), operations_frame, TRUE, TRUE, 5);
+    GtkWidget *operations_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(operations_frame), operations_vbox);
+    GtkWidget *botton;
+    // Buttons for process management, scheduling, and resource management are created here with their respective signal connections
+    botton = gtk_button_new_with_label("Create a New Process");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_create_process_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(operations_vbox), botton, FALSE, FALSE, 5);
+    botton = gtk_button_new_with_label("List Processes");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_list_processes_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(operations_vbox), botton, FALSE, FALSE, 5);
+    botton = gtk_button_new_with_label("Show Memory Map");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_show_memory_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(operations_vbox), botton, FALSE, FALSE, 5);
+    botton = gtk_button_new_with_label("Show System Logs");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_show_logs_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(operations_vbox), botton, FALSE, FALSE, 5);
+
+    // Terminate Process button and PID entry side-by-side
+    GtkWidget *terminate_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    botton = gtk_button_new_with_label("Terminate Process");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_terminate_process_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(terminate_hbox), botton, FALSE, FALSE, 0);
+    pid_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(pid_entry), "Enter PID");
+    gtk_box_pack_start(GTK_BOX(terminate_hbox), pid_entry, TRUE, TRUE, 0); // PID entry expands
+    gtk_box_pack_start(GTK_BOX(operations_vbox), terminate_hbox, FALSE, FALSE, 5);
+
+    // 4. Deadlock handling buttons (Right side of hbox)
+    GtkWidget *deadlock_frame = gtk_frame_new("Bankers Algorithm (Deadlock prevention)");
+    gtk_box_pack_start(GTK_BOX(mid_controls_hbox), deadlock_frame, TRUE, TRUE, 5);
+    GtkWidget *deadlock_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(deadlock_frame), deadlock_vbox);
+    GtkWidget *dl_button;
+    dl_button = gtk_button_new_with_label("Initialize Resources");
+    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_initalize_resources_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
+    dl_button = gtk_button_new_with_label("Set Max Claim"); 
+    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_set_max_claim_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
+    dl_button = gtk_button_new_with_label("Request Resources");
+    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_request_resources_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
+    dl_button = gtk_button_new_with_label("Release Resources");
+    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_release_resources_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);  
+    dl_button = gtk_button_new_with_label("Show Resources");
+    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_show_resources_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
+    dl_button = gtk_button_new_with_label("Safety Check");
+    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_safety_check_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
+
+    //5. Scheduler buttons
+    GtkWidget *scheduler_frame = gtk_frame_new("CPU Scheduling Algorithms");
+    gtk_box_pack_start(GTK_BOX(vbox), scheduler_frame, FALSE, FALSE, 5);
+    GtkWidget *scheduler_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_container_add(GTK_CONTAINER(scheduler_frame), scheduler_hbox);
+
+    botton = gtk_button_new_with_label("First-Come-First-Serve (FCFS)");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_fcfs_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(scheduler_hbox), botton, FALSE, FALSE, 5);
+
+    botton = gtk_button_new_with_label("Priority Scheduling");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_priority_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(scheduler_hbox), botton, FALSE, FALSE, 5);
+
+    botton = gtk_button_new_with_label("Round Robin (RR)");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_rr_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(scheduler_hbox), botton, FALSE, FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(scheduler_hbox),gtk_label_new("Time Quantum:"), FALSE, FALSE, 5);
+    quantum_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(quantum_entry), "Enter time quantum");
+    gtk_box_pack_start(GTK_BOX(scheduler_hbox), quantum_entry, FALSE, FALSE, 5);
+
+    // 7. Text Output Panel (Moved to bottom and expanded)
+    GtkWidget *text_frame = gtk_frame_new("System Output");
+    gtk_box_pack_start(GTK_BOX(vbox), text_frame, TRUE, TRUE, 5); // TRUE, TRUE to expand and fill
+    GtkWidget *scrolled_window = gtk_scrolled_window_new(NULL, NULL);
+    gtk_container_add(GTK_CONTAINER(text_frame), scrolled_window);
+    Text_output = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(Text_output), FALSE);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(Text_output), TRUE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(Text_output), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(Text_output), GTK_WRAP_NONE);
+    gtk_container_add(GTK_CONTAINER(scrolled_window), Text_output);
+
+    // 8. Terminate System Button
+    botton = gtk_button_new_with_label("Terminate System");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_terminate_system_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(vbox), botton, FALSE, FALSE, 5);
+
+    //START THE GTK MAIN LOOP
+    append_fmt("[%s] Mini OS Dashboard initialized successfully.", get_timestamp());
+    log_event("Mini OS Dashboard initialized successfully.");
+    gtk_widget_show_all(window);
+    gtk_widget_hide(gantt_frame); // Hide Gantt chart until we have segments to display
+    gtk_main();
+    return 0;
+
+}

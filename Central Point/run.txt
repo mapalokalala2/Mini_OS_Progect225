@@ -1,9 +1,8 @@
-# Compile the Mini OS with GTK3 GUI support
+# Compile the Mini OS with GTK3 GUI support (using main_gui.c)
 
-gcc -g -I include "Central Point/main.c" src/pcb.c src/scheduler.c src/memory.c src/banker.c src/logger.c -o mini_os.exe $(pkg-config --cflags --libs gtk+-3.0)
+# Use backticks for robust command substitution in Git Bash
+gcc -g -I include "Central Point/main_GUI.c" src/pcb.c src/scheduler.c src/memory.c src/banker.c src/logger.c -o mini_os_gui.exe $(pkg-config --cflags --libs gtk+-3.0)
 
-# Compline the mini os without GUI
+# Compile the Mini OS without GUI (using main.c)
 
 gcc -g -I include "Central Point/main.c" src/pcb.c src/scheduler.c src/memory.c src/banker.c src/logger.c -o mini_os.exe
-
-use this if you want to run the code

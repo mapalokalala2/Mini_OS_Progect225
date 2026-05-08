@@ -66,3 +66,66 @@
 [2026-05-08 06 : 48 : 15]Banker's Algorithm initialized with 5 resource types.
 [2026-05-08 06 : 48 : 59]Max claim set for process 3.
 [2026-05-08 06 : 49 : 09]Banker's Algorithm initialized with 5 resource types.
+==========Logger initalized==========
+[2026-05-08 14 : 33 : 32]The system was initalised
+[2026-05-08 14 : 33 : 32]Memory initialized with size 1024 bytes
+[2026-05-08 14 : 33 : 32]Mini OS initialized successfully.
+==========Logger initalized==========
+[2026-05-08 14 : 47 : 56]The system was initalised
+[2026-05-08 14 : 47 : 56]Memory initialized with size 1024 bytes
+[2026-05-08 14 : 47 : 56]Mini OS initialized successfully.
+==========Logger initalized==========
+[2026-05-08 14 : 55 : 18]The system was initalised
+[2026-05-08 14 : 55 : 18]Memory initialized with size 1024 bytes
+[2026-05-08 14 : 56 : 09]Memory allocated: 12 bytes for PID 1 at address 0
+[2026-05-08 14 : 56 : 09]process created successfully
+[2026-05-08 14 : 56 : 25]scheduler done. Time = 14 utilisation = 100.00%
+==========Logger initalized==========
+[2026-05-08 18 : 05 : 24]Mini OS initialized successfully.
+[2026-05-08 18 : 05 : 26]Mini OS Dashboard initialized successfully.
+[2026-05-08 18 : 06 : 42]Memory allocated: 14 bytes for PID 1 at address 0
+[2026-05-08 18 : 06 : 42]process created successfully
+[2026-05-08 18 : 07 : 11]Memory allocated: 74 bytes for PID 2 at address 14
+[2026-05-08 18 : 07 : 11]process created successfully
+[2026-05-08 18 : 07 : 16]process '0' named '' has been successfully TERMINATED
+[2026-05-08 18 : 07 : 18]process '0' named '' has been successfully TERMINATED
+[2026-05-08 18 : 09 : 15]process '1' named 'fire fire' has been successfully TERMINATED
+[2026-05-08 18 : 09 : 15]Memory freed for PID 1 and adjacent blocks coalesced
+==========Logger initalized==========
+[2026-05-08 18 : 13 : 55]Mini OS initialized successfully.
+[2026-05-08 18 : 13 : 57]Mini OS Dashboard initialized successfully.
+==========Logger initalized==========
+[2026-05-08 18 : 18 : 16]Mini OS initialized successfully.
+[2026-05-08 18 : 18 : 18]Mini OS Dashboard initialized successfully.
+==========Logger initalized==========
+[2026-05-08 18 : 25 : 21]Mini OS initialized successfully.
+[2026-05-08 18 : 25 : 23]Mini OS Dashboard initialized successfully.
+==========Logger initalized==========
+[2026-05-08 18 : 29 : 14]Mini OS initialized successfully.
+[2026-05-08 18 : 29 : 16]Mini OS Dashboard initialized successfully.
+==========Logger initalized==========
+[2026-05-08 18 : 36 : 49]Mini OS initialized successfully.
+[2026-05-08 18 : 36 : 52]Mini OS Dashboard initialized successfully.
+[2026-05-08 18 : 37 : 31]Memory allocated: 156 bytes for PID 1 at address 0
+[2026-05-08 18 : 37 : 31]process created successfully
+==========Logger initalized==========
+[2026-05-08 18 : 45 : 09]Mini OS initialized successfully.
+[2026-05-08 18 : 45 : 11]Mini OS Dashboard initialized successfully.
+[2026-05-08 18 : 45 : 39]Memory allocated: 123 bytes for PID 1 at address 0
+[2026-05-08 18 : 45 : 39]process created successfully
+==========Logger initalized==========
+[2026-05-08 18 : 48 : 09]Mini OS initialized successfully.
+[2026-05-08 18 : 48 : 12]Mini OS Dashboard initialized successfully.
+[2026-05-08 18 : 48 : 33]Memory allocated: 132 bytes for PID 1 at address 0
+[2026-05-08 18 : 48 : 33]process created successfully
+[2026-05-08 18 : 48 : 45]Memory allocated: 21 bytes for PID 2 at address 132
+[2026-05-08 18 : 48 : 45]process created successfully
+[2026-05-08 18 : 48 : 59]Memory allocated: 234 bytes for PID 3 at address 153
+[2026-05-08 18 : 48 : 59]process created successfully
+[2026-05-08 18 : 49 : 24]Memory allocated: 123 bytes for PID 4 at address 387
+[2026-05-08 18 : 49 : 24]process created successfully
+[2026-05-08 18 : 50 : 13]process '1' named 'try 1' has been successfully TERMINATED
+[2026-05-08 18 : 50 : 13]Memory freed for PID 1 and adjacent blocks coalesced
+[2026-05-08 18 : 50 : 34]process '2' named 'try 2' has been successfully TERMINATED
+[2026-05-08 18 : 50 : 34]Memory freed for PID 2 and adjacent blocks coalesced
+[2026-05-08 18 : 51 : 27]scheduler done. Time = 138 utilisation = 100.00%

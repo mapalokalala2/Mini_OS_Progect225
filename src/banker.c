@@ -131,7 +131,7 @@ void release_resources(int pid, int release[]) {
     log_event("Process %d released resources.", pid);
 }
 
-void show_resources(void) { // No change needed here, just context for the next diff
+void show_resources(void) { 
     printf("\nAvailable Resources:\n");
     for (int i = 0; i < MAX_RESOURCES; i++) {
         printf("Resource %d: %d\n", i, available[i]);
