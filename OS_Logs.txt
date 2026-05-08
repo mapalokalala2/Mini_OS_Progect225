@@ -15,3 +15,54 @@
 [2026-05-06 18 : 44 : 18]Memory freed for PID 1 and adjacent blocks coalesced
 [2026-05-06 18 : 44 : 58]process '2' named 'david is making noise' has been successfully DELETED
 [2026-05-06 18 : 44 : 58]Memory freed for PID 2 and adjacent blocks coalesced
+==========Logger initalized==========
+[2026-05-07 07 : 35 : 03]The system was initalised
+[2026-05-07 07 : 35 : 03]Memory initialized with size 1024 bytes
+[2026-05-07 07 : 35 : 03]Mini OS initialized successfully.
+[2026-05-07 07 : 35 : 30]Memory allocated: 134 bytes for PID 1 at address 0
+[2026-05-07 07 : 35 : 30]process created successfully
+[2026-05-07 07 : 37 : 54]Banker's Algorithm initialized with 5 resource types.
+[2026-05-07 07 : 38 : 20]Max claim set for process 1.
+[2026-05-07 07 : 38 : 45]Process 1 requested resources that are not currently available.
+==========Logger initalized==========
+[2026-05-08 06 : 23 : 54]The system was initalised
+[2026-05-08 06 : 23 : 54]Memory initialized with size 1024 bytes
+[2026-05-08 06 : 23 : 54]Mini OS initialized successfully.
+==========Logger initalized==========
+[2026-05-08 06 : 29 : 56]The system was initalised
+[2026-05-08 06 : 29 : 56]Memory initialized with size 1024 bytes
+[2026-05-08 06 : 29 : 56]Mini OS initialized successfully.
+[2026-05-08 06 : 30 : 39]Memory allocated: 13 bytes for PID 1 at address 0
+[2026-05-08 06 : 30 : 39]process created successfully
+==========Logger initalized==========
+[2026-05-08 06 : 35 : 19]The system was initalised
+[2026-05-08 06 : 35 : 19]Memory initialized with size 1024 bytes
+[2026-05-08 06 : 35 : 19]Mini OS initialized successfully.
+[2026-05-08 06 : 35 : 48]Memory allocated: 23 bytes for PID 1 at address 0
+[2026-05-08 06 : 35 : 48]process created successfully
+[2026-05-08 06 : 36 : 24]Memory allocated: 15 bytes for PID 2 at address 23
+[2026-05-08 06 : 36 : 24]process created successfully
+[2026-05-08 06 : 36 : 52]Memory allocated: 2 bytes for PID 3 at address 38
+[2026-05-08 06 : 36 : 52]process created successfully
+==========Logger initalized==========
+[2026-05-08 06 : 38 : 31]The system was initalised
+[2026-05-08 06 : 38 : 31]Memory initialized with size 1024 bytes
+[2026-05-08 06 : 38 : 31]Mini OS initialized successfully.
+==========Logger initalized==========
+[2026-05-08 06 : 40 : 39]The system was initalised
+[2026-05-08 06 : 40 : 39]Memory initialized with size 1024 bytes
+[2026-05-08 06 : 40 : 39]Mini OS initialized successfully.
+[2026-05-08 06 : 40 : 57]Memory allocated: 12 bytes for PID 1 at address 0
+[2026-05-08 06 : 40 : 57]process created successfully
+[2026-05-08 06 : 41 : 54]Memory allocated: 12 bytes for PID 2 at address 12
+[2026-05-08 06 : 41 : 54]process created successfully
+[2026-05-08 06 : 43 : 04]scheduler done. Time = 34 utilisation = 100.00%
+[2026-05-08 06 : 43 : 50]process '1' named 'fire fire fire' has been successfully DELETED
+[2026-05-08 06 : 43 : 50]Memory freed for PID 1 and adjacent blocks coalesced
+[2026-05-08 06 : 47 : 02]process '2' named 'peter stabbed himself' has been successfully DELETED
+[2026-05-08 06 : 47 : 02]Memory freed for PID 2 and adjacent blocks coalesced
+[2026-05-08 06 : 47 : 31]Memory allocated: 234 bytes for PID 3 at address 0
+[2026-05-08 06 : 47 : 31]process created successfully
+[2026-05-08 06 : 48 : 15]Banker's Algorithm initialized with 5 resource types.
+[2026-05-08 06 : 48 : 59]Max claim set for process 3.
+[2026-05-08 06 : 49 : 09]Banker's Algorithm initialized with 5 resource types.
