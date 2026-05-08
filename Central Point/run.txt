@@ -1,3 +1,9 @@
+# Compile the Mini OS with GTK3 GUI support
+
+gcc -g -I include "Central Point/main.c" src/pcb.c src/scheduler.c src/memory.c src/banker.c src/logger.c -o mini_os.exe $(pkg-config --cflags --libs gtk+-3.0)
+
+# Compline the mini os without GUI
+
 gcc -g -I include "Central Point/main.c" src/pcb.c src/scheduler.c src/memory.c src/banker.c src/logger.c -o mini_os.exe
 
 use this if you want to run the code
