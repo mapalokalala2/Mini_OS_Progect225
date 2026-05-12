@@ -14,14 +14,15 @@
 static GtkWidget *window;
 static GtkWidget *Text_output;
 static GtkWidget *quantum_entry;
-static GtkWidget *pid_entry;
 static GtkWidget *draw_area;
 static GtkWidget *gantt_frame;
+static GtkWidget *gantt_toggle_btn;
 static GtkWidget *gantt_label;
 static GtkWidget *total_memory_label;
 static GtkWidget *used_memory_label;
 static GtkWidget *allocated_memory_label;
 static GtkWidget *memory_progress_bar;
+static GtkTextBuffer *banker_dialog_buffer = NULL; // Global buffer for Banker's dialog
 
 static segment segs [MAX_SEGMENTS];
 static int num_segments = 0;
@@ -58,6 +59,27 @@ static void append_output(const char *format, ...) {
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
     append_text(buffer);
+}
+
+// Callback function for banker.c to use for output in the GUI dialog
+static void gui_banker_output_callback(const char *format, ...) {
+    if (!banker_dialog_buffer) {
+        // Fallback if buffer not set (e.g., if called outside the dialog context)
+        va_list args;
+        va_start(args, format);
+        vfprintf(stderr, format, args);
+        fprintf(stderr, "\n");
+        va_end(args);
+        return;
+    }
+
+    char buffer[1024]; // Sufficiently large buffer for a single line of output
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    gtk_text_buffer_insert_at_cursor(banker_dialog_buffer, buffer, -1);
+    gtk_text_buffer_insert_at_cursor(banker_dialog_buffer, "\n", -1); // Add newline
 }
 
 static void update_memory_display() {
@@ -168,6 +190,8 @@ void on_list_processes_clicked(GtkButton *button, gpointer user_data) {
 void on_fcfs_clicked(GtkButton *button, gpointer user_data) {
     num_segments = scheduler_selection(SCHED_FCFS, 0, segs, MAX_SEGMENTS);
     gtk_widget_show_all(gantt_frame);
+    gtk_widget_show(gantt_toggle_btn);
+    gtk_button_set_label(GTK_BUTTON(gantt_toggle_btn), "Hide Gantt Chart");
     gtk_widget_queue_draw(draw_area);
     append_fmt("[%s] Starting First-Come-First-Serve scheduling", get_timestamp());
     update_memory_display();
@@ -185,6 +209,8 @@ void on_rr_clicked(GtkButton *button, gpointer user_data) {
     append_fmt("[%s] Starting Round Robin scheduling with time quantum: %d", get_timestamp(), time_quantum);
     num_segments = scheduler_selection(SCHED_ROUNDROBIN, time_quantum, segs, MAX_SEGMENTS);
     gtk_widget_show_all(gantt_frame);
+    gtk_widget_show(gantt_toggle_btn);
+    gtk_button_set_label(GTK_BUTTON(gantt_toggle_btn), "Hide Gantt Chart");
     gtk_widget_queue_draw(draw_area);
     update_memory_display();
 }
@@ -194,22 +220,40 @@ void on_rr_clicked(GtkButton *button, gpointer user_data) {
 void on_priority_clicked(GtkButton *button, gpointer user_data) {
     num_segments = scheduler_selection(SCHED_PRIORITY, 0, segs, MAX_SEGMENTS);
     gtk_widget_show_all(gantt_frame);
+    gtk_widget_show(gantt_toggle_btn);
+    gtk_button_set_label(GTK_BUTTON(gantt_toggle_btn), "Hide Gantt Chart");
     gtk_widget_queue_draw(draw_area);
     append_fmt("[%s] Starting Priority scheduling", get_timestamp());
     update_memory_display();
 }
 
-void on_terminate_process_clicked(GtkButton *button, gpointer user_data) {
-    int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_entry)));
-    if (pid < 0) {
-        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a non-negative integer.");
-        gtk_dialog_run(GTK_DIALOG(error_dialog));
-        gtk_widget_destroy(error_dialog);
-        return;
+void on_delete_process_clicked(GtkButton *button, gpointer user_data) {
+    GtkWidget *dialog = gtk_dialog_new_with_buttons("Delete Process", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Delete", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
+    GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+    gtk_box_pack_start(GTK_BOX(content_area), hbox, TRUE, TRUE, 5);
+
+    gtk_box_pack_start(GTK_BOX(hbox), gtk_label_new("PID:"), FALSE, FALSE, 5);
+    GtkWidget *pid_input = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(pid_input), "Enter PID to delete");
+    gtk_box_pack_start(GTK_BOX(hbox), pid_input, TRUE, TRUE, 5);
+
+    gtk_widget_show_all(dialog);
+
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_input)));
+        if (pid <= 0) {
+            GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(dialog), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a valid positive integer PID.");
+            gtk_dialog_run(GTK_DIALOG(error_dialog));
+            gtk_widget_destroy(error_dialog);
+        } else {
+            delete_process(pid);
+            append_fmt("[%s] Deleted process with PID: %d", get_timestamp(), pid);
+            update_memory_display();
+        }
     }
-    terminate_process(pid);
-    append_fmt("[%s] Terminated process with PID: %d", get_timestamp(), pid);
-    update_memory_display();
+    gtk_widget_destroy(dialog);
 }
 
 void on_show_memory_clicked(GtkButton *button, gpointer user_data) {
@@ -248,81 +292,145 @@ void on_show_logs_clicked(GtkButton *button, gpointer user_data) {
 }
 
 void on_initalize_resources_clicked(GtkButton *button, gpointer user_data) {
-    int num_resources = MAX_RESOURCES; // Track how many are actually used
-    resource_init(num_resources, (int[]){10, 5, 7, 3, 8}); // Example initialization
-    append_fmt("[%s] Initialized resources with max values: RE_1: 10, RE_2: 5, RE_3: 7, RE_4: 3, RE_5: 8", get_timestamp());
+    GtkWidget *dialog = gtk_dialog_new_with_buttons("Initialize Resources", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Init", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
+    GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_container_set_border_width(GTK_CONTAINER(hbox), 20);
+    gtk_box_pack_start(GTK_BOX(content_area), hbox, TRUE, TRUE, 0);
+
+    gtk_box_pack_start(GTK_BOX(hbox), gtk_label_new("Total Units (1D):"), FALSE, FALSE, 0);
+    GtkWidget *entry = gtk_entry_new();
+    gtk_entry_set_text(GTK_ENTRY(entry), "10");
+    gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
+
+    gtk_widget_show_all(dialog);
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        int total = atoi(gtk_entry_get_text(GTK_ENTRY(entry)));
+        resource_init(total, gui_banker_output_callback); // Pass the GUI callback
+        append_fmt("[%s] Initialized system with %d total resource units.", get_timestamp(), total);
+    }
+    gtk_widget_destroy(dialog);
     update_memory_display();
 }
 
 void on_set_max_claim_clicked(GtkButton *button, gpointer user_data) {
-    int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_entry)));
-    if (pid < 0) {
-        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a non-negative integer.");
-        gtk_dialog_run(GTK_DIALOG(error_dialog));
-        gtk_widget_destroy(error_dialog);
+    pcb *processes = get_process_table();
+    int active_count = 0;
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (processes[i].pid != 0 && processes[i].state != TERMINATED) {
+            active_count++;
+        }
+    }
+
+    if (active_count == 0) {
+        GtkWidget *info_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "There are no processes in the system.");
+        gtk_dialog_run(GTK_DIALOG(info_dialog));
+        gtk_widget_destroy(info_dialog);
         return;
     }
-    int max_vals[MAX_RESOURCES];
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        // Using simplified default values for GUI interaction
-        max_vals[i] = 5; 
+
+    GtkWidget *dialog = gtk_dialog_new_with_buttons("Set Max Claims", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Save All", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
+    GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    GtkWidget *grid = gtk_grid_new();
+    gtk_box_pack_start(GTK_BOX(content_area), grid, TRUE, TRUE, 10);
+
+    // Headers
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("PID"), 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Process Name"), 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Max Claim"), 2, 0, 1, 1);
+
+    typedef struct {
+        int pid;
+        GtkWidget *max_entry;
+    } row_data;
+    row_data *rows = malloc(sizeof(row_data) * active_count);
+
+    int row_idx = 1;
+    int active_idx = 0;
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (processes[i].pid != 0 && processes[i].state != TERMINATED) {
+            char pid_text[16];
+            snprintf(pid_text, sizeof(pid_text), "%d", processes[i].pid);
+            gtk_grid_attach(GTK_GRID(grid), gtk_label_new(pid_text), 0, row_idx, 1, 1);
+            gtk_grid_attach(GTK_GRID(grid), gtk_label_new(processes[i].name), 1, row_idx, 1, 1);
+            
+            rows[active_idx].pid = processes[i].pid;
+            rows[active_idx].max_entry = gtk_entry_new();
+            gtk_entry_set_text(GTK_ENTRY(rows[active_idx].max_entry), "0");
+            gtk_grid_attach(GTK_GRID(grid), rows[active_idx].max_entry, 2, row_idx, 1, 1);
+
+            row_idx++;
+            active_idx++;
+        }
     }
-    set_max_claim(pid, max_vals);
-    append_fmt("[%s] Set max claim for process with PID: %d", get_timestamp(), pid);
-    update_memory_display();
+
+    gtk_widget_show_all(dialog);
+
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        for (int i = 0; i < active_count; i++) {
+            int max = atoi(gtk_entry_get_text(GTK_ENTRY(rows[i].max_entry)));
+            if (set_process_max_claim(rows[i].pid, max) == 0) {
+                append_fmt("[%s] Max claim set for PID %d: %d", get_timestamp(), rows[i].pid, max);
+            } else {
+                GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(dialog), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Failed to set claim for PID %d. Ensure resources are initialized and claims do not exceed totals.", rows[i].pid);
+                gtk_dialog_run(GTK_DIALOG(error_dialog));
+                gtk_widget_destroy(error_dialog);
+            }
+        }
+        update_memory_display();
+    }
+
+    free(rows);
+    gtk_widget_destroy(dialog);
 }
 
 void on_request_resources_clicked(GtkButton *button, gpointer user_data) {
-    int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_entry)));
-    if (pid < 0) {
-        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a non-negative integer.");
-        gtk_dialog_run(GTK_DIALOG(error_dialog));
-        gtk_widget_destroy(error_dialog);
-        return;
-    }
-    int request[MAX_RESOURCES];
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        // Simplified resource request for GUI demo
-        request[i] = 1;
-    }
-    request_resources(pid, request);
-    append_fmt("[%s] Process with PID: %d made a resource request", get_timestamp(), pid);
-    update_memory_display();
+    GtkWidget *banker_output_dialog = gtk_dialog_new_with_buttons("Banker's Algorithm Simulation Output", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Close", GTK_RESPONSE_CLOSE, NULL);
+    gtk_window_set_default_size(GTK_WINDOW(banker_output_dialog), 600, 400);
+
+    GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(banker_output_dialog));
+    GtkWidget *scrolled_window = gtk_scrolled_window_new(NULL, NULL);
+    gtk_widget_set_hexpand(scrolled_window, TRUE);
+    gtk_widget_set_vexpand(scrolled_window, TRUE);
+    gtk_container_add(GTK_CONTAINER(content_area), scrolled_window);
+
+    GtkWidget *text_view = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(text_view), TRUE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_WORD_CHAR); // Allow wrapping for long lines
+
+    banker_dialog_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(text_view));
+    gtk_container_add(GTK_CONTAINER(scrolled_window), text_view);
+
+    // Clear previous output
+    gtk_text_buffer_set_text(banker_dialog_buffer, "", -1);
+
+    gui_banker_output_callback("[%s] Starting Banker's Algorithm simulation...", get_timestamp());
+
+    bool safe = run_banker_simulation(gui_banker_output_callback);
+
+    GtkWidget *msg_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, safe ? GTK_MESSAGE_INFO : GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+                                                   safe ? "System is in a SAFE STATE. Check simulation output for sequence." : "UNSAFE STATE DETECTED! Request denied to avoid deadlock. Check simulation output for details.");
+    gtk_dialog_run(GTK_DIALOG(msg_dialog));
+    gtk_widget_destroy(msg_dialog);
+    append_output(safe ? "System is SAFE. Simulation output displayed in pop-up." : "System is UNSAFE. Potential deadlock detected. Simulation output displayed in pop-up.");
+
+    gtk_widget_show_all(banker_output_dialog);
+    gtk_dialog_run(GTK_DIALOG(banker_output_dialog));
+    gtk_widget_destroy(banker_output_dialog);
+    banker_dialog_buffer = NULL; // Clear the global pointer after dialog is destroyed
 }
 
-void on_release_resources_clicked(GtkButton *button, gpointer user_data) {
-    int pid = atoi(gtk_entry_get_text(GTK_ENTRY(pid_entry)));
-    if (pid < 0) {
-        GtkWidget *error_dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Invalid PID. Please enter a non-negative integer.");
-        gtk_dialog_run(GTK_DIALOG(error_dialog));
-        gtk_widget_destroy(error_dialog);
-        return;
-    }
-    int release[MAX_RESOURCES];
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        // Simplified resource release for GUI demo
-        release[i] = 1;
-    }
-    release_resources(pid, release);
-    append_fmt("[%s] Process with PID: %d made a resource release request", get_timestamp(), pid);
-    update_memory_display();
-}
-
-void on_show_resources_clicked(GtkButton *button, gpointer user_data) {
-    append_fmt("[%s] Showing current resource allocation and availability", get_timestamp());
-    show_resources();
-    update_memory_display();
-}
-
-void on_safety_check_clicked(GtkButton *button, gpointer user_data) {
-    append_fmt("[%s] Performing safety check", get_timestamp());
-    if (safety_check()) {
-        append_output("The system is in a safe state.\n");
+void on_toggle_gantt_clicked(GtkButton *button, gpointer user_data) {
+    if (gtk_widget_get_visible(gantt_frame)) {
+        gtk_widget_hide(gantt_frame);
+        gtk_button_set_label(button, "Show Gantt Chart");
     } else {
-        append_output("The system is in an unsafe state.\n");
+        gtk_widget_show_all(gantt_frame);
+        gtk_button_set_label(button, "Hide Gantt Chart");
     }
-    update_memory_display();
-}   
+}
 
 void on_terminate_system_clicked(GtkButton *button, gpointer user_data) {
     log_event("Mini OS Dashboard: Manual termination requested.");
@@ -345,10 +453,10 @@ gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
     }
     double scale = (total_time > 0) ? (double)width / total_time : 1.0;
 
-    // Phantom blue and gray palette for process blocks
+    // Grayscale palette for process blocks
     double color_palette[10][3] = {
-        {0.2, 0.2, 0.3}, {0.3, 0.3, 0.4}, {0.4, 0.4, 0.5}, {0.5, 0.5, 0.6}, {0.6, 0.6, 0.7},
-        {0.25, 0.25, 0.35}, {0.35, 0.35, 0.45}, {0.45, 0.45, 0.55}, {0.55, 0.55, 0.65}, {0.65, 0.65, 0.75}
+        {0.2, 0.2, 0.2}, {0.3, 0.3, 0.3}, {0.4, 0.4, 0.4}, {0.5, 0.5, 0.5}, {0.6, 0.6, 0.6},
+        {0.25, 0.25, 0.25}, {0.35, 0.35, 0.35}, {0.45, 0.45, 0.45}, {0.55, 0.55, 0.55}, {0.65, 0.65, 0.65}
     };
     int color_index = 0;
     int y = height / 4;
@@ -419,23 +527,14 @@ int main(int argc, char *argv[]) {
     gtk_box_pack_start(GTK_BOX(vbox), mem_frame, FALSE, FALSE, 5);
     GtkWidget *mem_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(mem_frame), mem_vbox);
-    total_memory_label = gtk_label_new("Total: 1024 KB"); // Corrected initial text
+    total_memory_label = gtk_label_new("Total: 1024 KB"); 
     gtk_box_pack_start(GTK_BOX(mem_vbox), total_memory_label, FALSE, FALSE, 5);
-    used_memory_label = gtk_label_new("Used: 0 KB"); // Corrected initial text
+    used_memory_label = gtk_label_new("Used: 0 KB"); 
     gtk_box_pack_start(GTK_BOX(mem_vbox), used_memory_label, FALSE, FALSE, 5);
     allocated_memory_label = gtk_label_new("Available: 1024 KB"); // Corrected initial text
     gtk_box_pack_start(GTK_BOX(mem_vbox), allocated_memory_label, FALSE, FALSE, 5);
     memory_progress_bar = gtk_progress_bar_new();
     gtk_box_pack_start(GTK_BOX(mem_vbox), memory_progress_bar, FALSE, FALSE, 5);
-
-    // 2. Gantt Chart Panel
-    gantt_frame = gtk_frame_new("Gantt Chart");
-    gtk_box_pack_start(GTK_BOX(vbox), gantt_frame, TRUE, TRUE, 5);
-    draw_area = gtk_drawing_area_new();
-    gtk_widget_set_size_request(draw_area, 800, 200);
-    gtk_container_add(GTK_CONTAINER(gantt_frame), draw_area);
-    g_signal_connect(draw_area, "draw", G_CALLBACK(on_draw), NULL);
-    gtk_widget_hide(gantt_frame); // Hide until we have segments to display
 
     // Create a horizontal box to hold Operations and Deadlock side-by-side
     GtkWidget *mid_controls_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
@@ -461,15 +560,9 @@ int main(int argc, char *argv[]) {
     g_signal_connect(botton, "clicked", G_CALLBACK(on_show_logs_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(operations_vbox), botton, FALSE, FALSE, 5);
 
-    // Terminate Process button and PID entry side-by-side
-    GtkWidget *terminate_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    botton = gtk_button_new_with_label("Terminate Process");
-    g_signal_connect(botton, "clicked", G_CALLBACK(on_terminate_process_clicked), NULL);
-    gtk_box_pack_start(GTK_BOX(terminate_hbox), botton, FALSE, FALSE, 0);
-    pid_entry = gtk_entry_new();
-    gtk_entry_set_placeholder_text(GTK_ENTRY(pid_entry), "Enter PID");
-    gtk_box_pack_start(GTK_BOX(terminate_hbox), pid_entry, TRUE, TRUE, 0); // PID entry expands
-    gtk_box_pack_start(GTK_BOX(operations_vbox), terminate_hbox, FALSE, FALSE, 5);
+    botton = gtk_button_new_with_label("Delete Process");
+    g_signal_connect(botton, "clicked", G_CALLBACK(on_delete_process_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(operations_vbox), botton, FALSE, FALSE, 5);
 
     // 4. Deadlock handling buttons (Right side of hbox)
     GtkWidget *deadlock_frame = gtk_frame_new("Bankers Algorithm (Deadlock prevention)");
@@ -477,24 +570,24 @@ int main(int argc, char *argv[]) {
     GtkWidget *deadlock_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(deadlock_frame), deadlock_vbox);
     GtkWidget *dl_button;
-    dl_button = gtk_button_new_with_label("Initialize Resources");
+    dl_button = gtk_button_new_with_label("Initialize");
     g_signal_connect(dl_button, "clicked", G_CALLBACK(on_initalize_resources_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
     dl_button = gtk_button_new_with_label("Set Max Claim"); 
     g_signal_connect(dl_button, "clicked", G_CALLBACK(on_set_max_claim_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
-    dl_button = gtk_button_new_with_label("Request Resources");
+    dl_button = gtk_button_new_with_label("Run Banker's Simulation");
     g_signal_connect(dl_button, "clicked", G_CALLBACK(on_request_resources_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
-    dl_button = gtk_button_new_with_label("Release Resources");
-    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_release_resources_clicked), NULL);
-    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);  
-    dl_button = gtk_button_new_with_label("Show Resources");
-    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_show_resources_clicked), NULL);
-    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
-    dl_button = gtk_button_new_with_label("Safety Check");
-    g_signal_connect(dl_button, "clicked", G_CALLBACK(on_safety_check_clicked), NULL);
-    gtk_box_pack_start(GTK_BOX(deadlock_vbox), dl_button, FALSE, FALSE, 5);
+
+    // 2. Gantt Chart Panel
+    gantt_frame = gtk_frame_new("Gantt Chart");
+    gtk_box_pack_start(GTK_BOX(vbox), gantt_frame, TRUE, TRUE, 5);
+    draw_area = gtk_drawing_area_new();
+    gtk_widget_set_size_request(draw_area, 800, 60); // Reduced height to "size 3" equivalent
+    gtk_container_add(GTK_CONTAINER(gantt_frame), draw_area);
+    g_signal_connect(draw_area, "draw", G_CALLBACK(on_draw), NULL);
+    gtk_widget_hide(gantt_frame); // Hide until we have segments to display
 
     //5. Scheduler buttons
     GtkWidget *scheduler_frame = gtk_frame_new("CPU Scheduling Algorithms");
@@ -518,6 +611,11 @@ int main(int argc, char *argv[]) {
     gtk_entry_set_placeholder_text(GTK_ENTRY(quantum_entry), "Enter time quantum");
     gtk_box_pack_start(GTK_BOX(scheduler_hbox), quantum_entry, FALSE, FALSE, 5);
 
+    // Toggle Gantt Chart Button
+    gantt_toggle_btn = gtk_button_new_with_label("Show Gantt Chart");
+    g_signal_connect(gantt_toggle_btn, "clicked", G_CALLBACK(on_toggle_gantt_clicked), NULL);
+    gtk_box_pack_start(GTK_BOX(scheduler_hbox), gantt_toggle_btn, FALSE, FALSE, 5);
+
     // 7. Text Output Panel (Moved to bottom and expanded)
     GtkWidget *text_frame = gtk_frame_new("System Output");
     gtk_box_pack_start(GTK_BOX(vbox), text_frame, TRUE, TRUE, 5); // TRUE, TRUE to expand and fill
@@ -540,6 +638,7 @@ int main(int argc, char *argv[]) {
     log_event("Mini OS Dashboard initialized successfully.");
     gtk_widget_show_all(window);
     gtk_widget_hide(gantt_frame); // Hide Gantt chart until we have segments to display
+    gtk_widget_hide(gantt_toggle_btn); // Hide toggle button until scheduler runs
     gtk_main();
     return 0;
 

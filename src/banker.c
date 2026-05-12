@@ -13,186 +13,214 @@
 //we will be using bankers algerithm, which is a reasorce allocation and deadlock avoidance strategy.it will woke 
 //by simulating the allocation of resorceses and only granting a request if the resulting staed is safe.
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 #include "../include/os.h"
 #include "../include/logger.h"
 #include "../include/banker.h"
 
-
-static int available[MAX_RESOURCES];
-static int max_claim[MAX_PROCESSES][MAX_RESOURCES];
-static int allocation[MAX_PROCESSES][MAX_RESOURCES];
-static int need[MAX_PROCESSES][MAX_RESOURCES];
-static int total_resources[MAX_RESOURCES];
+/* 1-Dimensional Banker's Algorithm Data Structures */
+static int total_units = 0;
+static int available_units = 0;
+static int max_claim[MAX_PROCESSES];
+static int allocation[MAX_PROCESSES];
+static int need[MAX_PROCESSES];
+static bool finished[MAX_PROCESSES];
 
 static int find_process_index(int pid){
+    if (pid <= 0) return -1;
     for (int i = 0; i < MAX_PROCESSES; i++) {
-        if(get_process_table()[i].pid == pid) {
-            return i;
-        } 
+        if(get_process_table()[i].pid == pid) return i;
     }
-    return -1; // not found
+    return -1;
 }
 
-void resource_init(int types, int total[]) {
-    if (types > MAX_RESOURCES) {
-        log_event("Warning: Attempted to initialize %d resources. Capped at %d.", types, MAX_RESOURCES);
-        types = MAX_RESOURCES;
-    }
-    for (int i = 0; i < types; i++) { 
-        available[i] = total[i];
-        total_resources[i] = total[i];
-    }
-    // Ensure remaining resource slots are zeroed
-    for (int i = types; i < MAX_RESOURCES; i++) {
-        available[i] = 0;
-        total_resources[i] = 0;
-    }
-
+void resource_init(int total, banker_output_callback output_func) {
+    total_units = total;
+    available_units = total;
     memset(max_claim, 0, sizeof(max_claim));
     memset(allocation, 0, sizeof(allocation));
     memset(need, 0, sizeof(need));
-    log_event("Banker's Algorithm initialized with %d resource types.", types);
+    memset(finished, 0, sizeof(finished));
+    log_event("Banker's Algorithm initialized with %d total units (1D Model).", total); // Keep system log
+    if (output_func) output_func("Banker's Algorithm initialized with %d total units (1D Model).", total); // Output to GUI/CLI
 }
 
-int set_max_claim(int pid, int max[]) {
+int set_process_max_claim(int pid, int max) {
     int index = find_process_index(pid);
-    if (index == -1) {
-        log_event("Error: Process %d not found when setting max claim.", pid);
+    if (index == -1) return -1;
+
+    if (max > total_units) {
+        log_event("Error: Max claim %d for PID %d exceeds total system units %d.", max, pid, total_units);
         return -1;
     }
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        max_claim[index][i] = max[i];
-        need[index][i] = max[i]; // initially, need is equal to max claim
-    }
-    log_event("Max claim set for process %d.", pid);
+
+    max_claim[index] = max;
+    allocation[index] = 0;
+    need[index] = max;
+    finished[index] = false;
+
+    log_event("Max claim set for PID %d: %d. (Used=0, Need=%d)", pid, max, max);
     return 0;
 }
 
-bool request_resources(int pid, int request[]) {
-    int index = find_process_index(pid);
-    if (index == -1) {
-        log_event("Error: Process %d not found when requesting resources.", pid);
-        return false;
-    }
-    // Check if request is less than need
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        if (request[i] > need[index][i]) {
-            log_event("Process %d requested more than its declared maximum claim.", pid);
-            return false;
-        }
-    }
-    // Check if request is less than available
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        if (request[i] > available[i]) {
-            log_event("Process %d requested resources that are not currently available.", pid);
-            return false;
-        }
-    }
-    // Simulate allocation
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        available[i] -= request[i];
-        allocation[index][i] += request[i];
-        need[index][i] -= request[i];
-    }
-    // Check for safety of the new state
-    if (safety_check()) {
-        log_event("Resources allocated to process %d.", pid);
-        return true;
-    } else {
-        // Rollback allocation
-        for (int i = 0; i < MAX_RESOURCES; i++) {
-            available[i] += request[i];
-            allocation[index][i] -= request[i];
-            need[index][i] += request[i];
-        }
-        log_event("Resource request by process %d denied to avoid unsafe state.", pid);
-        return false;
-    }
-}
-
-void release_resources(int pid, int release[]) {
-    int index = find_process_index(pid);
-    if (index == -1) {
-        log_event("Error: Process %d not found when releasing resources.", pid);
-        return;
-    }
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        if (release[i] > allocation[index][i]) {
-            log_event("Process %d attempted to release more resources than allocated.", pid);
-            return;
-        }
-    }
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        available[i] += release[i];
-        allocation[index][i] -= release[i];
-        need[index][i] += release[i];
-    }
-    log_event("Process %d released resources.", pid);
-}
-
-void show_resources(void) { 
-    printf("\nAvailable Resources:\n");
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        printf("Resource %d: %d\n", i, available[i]);
-    }
-    printf("\nProcess Allocations and Needs:\n");
-    pcb *table = get_process_table();
-    for (int i = 0; i < MAX_PROCESSES; i++) {
-        if (table[i].pid != 0) {
-            printf("Process Index %d (PID %d):\n", i, table[i].pid);
-            printf("  Allocation: ");
-            for (int j = 0; j < MAX_RESOURCES; j++) printf("%d ", allocation[i][j]);
-            printf("\n  Need:       ");
-            for (int j = 0; j < MAX_RESOURCES; j++) printf("%d ", need[i][j]);
-            printf("\n");
-        }
-    }
-}
-
-bool safety_check(void) { // Removed unused parameters
-    pcb *table = get_process_table();
-    int work[MAX_RESOURCES];
-    bool finish[MAX_PROCESSES] = {false};
-
-    for (int i = 0; i < MAX_RESOURCES; i++) {
-        work[i] = available[i];
-    }
+/* Helper to perform a standard Banker's safety check on current state */
+static bool is_state_safe(int work, const int current_alloc[], const int current_need[], int n_procs, const pcb* table) {
+    bool finish_check[MAX_PROCESSES] = {false};
+    int count = 0;
+    int active_indices[MAX_PROCESSES];
+    int active_count = 0;
 
     for (int i = 0; i < MAX_PROCESSES; i++) {
-        // If slot is empty, treat as already finished
-        finish[i] = (table[i].pid == 0);
+        if (table[i].pid != 0 && table[i].state != TERMINATED) {
+            active_indices[active_count++] = i;
+        }
     }
 
-    while (true) {
+    while (count < active_count) {
         bool found = false;
-        for (int i = 0; i < MAX_PROCESSES; i++) {
-            if (!finish[i]) {
-                bool can_finish = true;
-                for (int j = 0; j < MAX_RESOURCES; j++) {
-                    if (need[i][j] > work[j]) {
-                        can_finish = false;
-                        break;
-                    }
-                }
-                if (can_finish) {
-                    for (int j = 0; j < MAX_RESOURCES; j++) {
-                        work[j] += allocation[i][j];
-                    }
-                    finish[i] = true;
-                    found = true;
-                }
+        for (int i = 0; i < active_count; i++) {
+            int idx = active_indices[i];
+            if (!finish_check[idx] && current_need[idx] <= work) {
+                work += current_alloc[idx];
+                finish_check[idx] = true;
+                found = true;
+                count++;
             }
         }
-        if (!found) {
-            break;
+        if (!found) return false;
+    }
+    return true;
+}
+
+bool run_banker_simulation(banker_output_callback output_func) {
+    pcb *table = get_process_table();
+    int active_count = 0;
+    int active_indices[MAX_PROCESSES];
+    
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (table[i].pid != 0 && table[i].state != TERMINATED) {
+            active_indices[active_count++] = i;
+        }
+        finished[i] = false; // Reset finished status for all processes
+        allocation[i] = 0; // Reset allocation
+    }
+    available_units = total_units;
+
+    // Perform initial allocation of 2 units (or up to Max Claim)
+    if (output_func) output_func("--- Initial Allocation (2 units per process) ---");
+    for (int k = 0; k < active_count; k++) {
+        int idx = active_indices[k];
+        int initial_grant = (max_claim[idx] < 2) ? max_claim[idx] : 2;
+        if (available_units >= initial_grant) {
+            allocation[idx] = initial_grant;
+            available_units -= initial_grant;
+            if (output_func) output_func("PID %d: Initially allocated %d units.", table[idx].pid, initial_grant);
+        }
+    }
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        need[i] = max_claim[i] - allocation[i];
+    }
+
+    if (active_count == 0) {
+        printf("No active processes to simulate.\n");
+        return true;
+    }
+
+    if (output_func) output_func("\n--- Automated Banker's Lifecycle Simulation ---");
+    int completed_procs = 0;
+    int stuck_iterations = 0;
+
+    while (completed_procs < active_count) {
+        if (output_func) output_func("\n[Current Table] Available Units: %d", available_units);
+        if (output_func) output_func("%-10s | %-5s | %-5s | %-5s | %-8s", "Process", "Used", "Max", "Need", "Status");
+        for (int k = 0; k < active_count; k++) {
+            int idx = active_indices[k];
+            if (output_func) output_func("PID %-6d | %-5d | %-5d | %-5d | %-8s",
+                                         table[idx].pid, allocation[idx], max_claim[idx], need[idx],
+                                         finished[idx] ? "FINISHED" : "ACTIVE");
+        }
+
+        bool progress_made = false;
+        
+        // Selection logic: Look for the process with the smallest non-zero need first
+        while (true) {
+            int idx = -1;
+            int min_need = 1000000;
+
+            for (int k = 0; k < active_count; k++) {
+                int i = active_indices[k];
+                if (!finished[i] && need[i] > 0) {
+                    if (need[i] < min_need) {
+                        min_need = need[i];
+                        idx = i;
+                    }
+                }
+            }
+
+            if (idx == -1) break; // No more active processes with needs
+            
+            // Banker thinking: "Can I give 1 unit to this process?"
+            if (available_units > 0 && need[idx] > 0) { // Only try to allocate if units are available and needed
+                if (output_func) output_func("Banker: Checking if granting 1 unit to PID %d is safe...", table[idx].pid);
+                
+                // Hypothetical allocation
+                available_units--;
+                allocation[idx]++;
+                need[idx]--;
+
+                if (is_state_safe(available_units, allocation, need, active_count, table)) { // active_count is not used in is_state_safe
+                    if (output_func) output_func("Banker: [SAFE] Request granted to PID %d.", table[idx].pid);
+                    progress_made = true;
+                    
+                    if (need[idx] == 0) { // Process has finished its need
+                        if (output_func) output_func("Banker: PID %d has met its Max Claim and is running...", table[idx].pid);
+                        if (output_func) output_func("Banker: PID %d finished! Releasing %d units back to system.", table[idx].pid, allocation[idx]);
+                        available_units += allocation[idx];
+                        allocation[idx] = 0;
+                        finished[idx] = true;
+                        completed_procs++;
+                    }
+                    break; // Move to next simulation step
+                } else {
+                    // Rollback hypothetical allocation
+                    available_units++;
+                    allocation[idx]--;
+                    need[idx]++;
+                    if (output_func) output_func("Banker: [UNSAFE] Request from PID %d denied to avoid potential deadlock.", table[idx].pid);
+                    
+                    // Since the smallest need failed, we break to avoid an infinite loop in the 'while'
+                    // and let the progress check handle it.
+                    break; 
+                }
+            } else if (need[idx] == 0 && !finished[idx]) {
+                // Handle processes that might have finished during initial allocation
+                available_units += allocation[idx];
+                allocation[idx] = 0;
+                finished[idx] = true;
+                completed_procs++;
+                progress_made = true;
+                break;
+            } else {
+                break;
+            }
+        }
+
+        if (!progress_made) {
+            stuck_iterations++;
+            if (stuck_iterations > active_count) { // If we've iterated through all active processes without making progress
+                if (output_func) output_func("\n!! UNSAFE STATE DETECTED !!");
+                if (output_func) output_func("Reason: No process can be granted resources without potentially causing a deadlock.");
+                if (output_func) output_func("Available units (%d) cannot satisfy any remaining process Needs.", available_units);
+                log_event("Simulation ended: UNSAFE state / Deadlock.");
+                return false;
+            }
+        } else {
+            stuck_iterations = 0;
         }
     }
 
-    for (int i = 0; i < MAX_PROCESSES; i++) {
-        if (!finish[i]) {
-            return false; // Not safe
-        }
-    }
-    return true; // Safe
- }
+    if (output_func) output_func("\n>> SUCCESS: All processes finished. System returned to initial available units: %d", available_units);
+    log_event("Simulation ended: All processes finished successfully.");
+    return true;
+}

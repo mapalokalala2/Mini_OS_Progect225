@@ -4,6 +4,9 @@
 #include "../include/memory.h"
 #include "../include/logger.h"
 
+/* Forward declaration for Banker cleanup function */
+extern void banker_release_all(int pid);
+
 static pcb process_table[MAX_PROCESSES];
 static int process_count = 0;
 static int clock_tick = 0;
@@ -84,19 +87,6 @@ int pcb_add(const char *name, int burst, int priority, int mem_size) {
     return create_process(name, burst, priority, mem_size);
 }
 
-void terminate_process(int pid){
-    for(int i = 0; i <  MAX_PROCESSES ; i++){
-        if(process_table[i].pid == pid) {
-            log_event("process '%d' named '%s' has been successfully TERMINATED", pid, process_table[i].name);
-            memory_free(process_table[i].pid); 
-            process_table[i].pid = 0; // Mark as empty for reuse, consistent with init_system
-            process_table[i].state = TERMINATED;
-            process_count--;
-            return; // Optimization: process found and terminated
-        }
-    }
-}
-
 void pcb_print_all(void) {
     printf("\n%-5s %-15s %-12s %-10s %-10s %-10s\n", 
            "PID", "Name", "State", "Priority", "Memory", "Rem. Time");
@@ -132,16 +122,23 @@ int get_process_count(void){
 }
 
 void delete_process(int pid) {
+    if (pid <= 0) {
+        return;
+    }
     for (int i = 0; i < MAX_PROCESSES; i++) {
         if (process_table[i].pid == pid) {
             log_event("process '%d' named '%s' has been successfully DELETED", pid, process_table[i].name);
-            memory_free(process_table[i].pid); 
+            memory_free(process_table[i].pid);
             process_table[i].pid = 0; // Mark as empty for reuse, consistent with init_system
             process_table[i].state = TERMINATED;
             process_count--;
             return; // Optimization: process found and deleted
         }
     }
+}
+
+void terminate_process(int pid) {
+    delete_process(pid);
 }
 
 void delete_all_processes(void) {

@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 #include "../include/os.h"
 #include "../include/pcb.h"
 #include "../include/scheduler.h"
@@ -6,6 +8,14 @@
 #include "../include/banker.h"
 #include "../include/logger.h"
 
+// Callback for CLI version of Banker's Algorithm output
+static void cli_banker_output_callback(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    printf("\n"); // Add newline as printf in banker.c had them
+    va_end(args);
+}
 static segment segs [MAX_SEGMENTS];
 
 void continue_prompt(void) {
@@ -61,7 +71,6 @@ int main(void) {
     int choice = 1, dl_choice = 1;
     int burst, priority, mem, pid, time_quantum;
     char name[MAX_NAME_LEN];
-    int num_resources = MAX_RESOURCES; // Track how many are actually used
     sched sched_type;
 
     while(choice != 9) {
@@ -142,73 +151,41 @@ int main(void) {
                 continue_prompt();
                 break;
             case 8: 
-                while(dl_choice != 7) {
+                dl_choice = 1; // Reset to allow re-entry into the sub-menu
+                while(dl_choice != 4) {
                     clear_screen();
-                    printf("Running Deadlock Handling...\n");
-                    printf("1. Initialize Resources\n");
-                    printf("2. Set Process Max Claim (Required before Request)\n");
-                    printf("3. Make Resource Request\n");
-                    printf("4. Release Resources\n");
-                    printf("5. Show Resources\n");
-                    printf("6. Safety Check\n");
-                    printf("7. Back\n");
+                    printf("Bankers Algorithm (Deadlock prevention)\n");
+                    printf("1. Initialize\n");
+                    printf("2. Set Max Claim\n");
+                    printf("3. Run Banker's Simulation\n");
+                    printf("4. Back\n");
                     printf("Enter your choice: ");
                     scanf("%d", &dl_choice);
                     switch(dl_choice) {
                         case 1:
-                            resource_init(MAX_RESOURCES, (int[]){10, 5, 7, 3, 8}); // Example initialization
-                            num_resources = MAX_RESOURCES;
-                            printf("Resources initialized to default values.\n");
+                            printf("Enter total units for single resource: ");
+                            int total;
+                            scanf("%d", &total);
+                            resource_init(total, cli_banker_output_callback);
                             continue_prompt();
                             break;
                         case 2:
+                            int pid_v, max_v; // Declare variables here
                             printf("Enter PID: ");
-                            int max_pid;
-                            scanf("%d", &max_pid);
-                            int max_vals[MAX_RESOURCES];
-                            printf("Enter Max Claim for %d resources (space separated): ", num_resources);
-                            for(int i = 0; i < num_resources; i++) scanf("%d", &max_vals[i]);
-                            set_max_claim(max_pid, max_vals);
+                            scanf("%d", &pid_v);
+                            printf("Enter Max Claim: "); scanf("%d", &max_v);
+                            set_process_max_claim(pid_v, max_v);
                             continue_prompt();
                             break;
                         case 3:
-                            printf("Enter PID of process making request: ");
-                            int req_pid;
-                            scanf("%d", &req_pid);
-                            int request[MAX_RESOURCES];
-                            printf("Enter resource request for %d resources (space separated): ", num_resources);
-                            for (int i = 0; i < num_resources; i++) {
-                                scanf("%d", &request[i]);
+                            if (run_banker_simulation(cli_banker_output_callback)) {
+                                printf("System is SAFE.\n");
+                            } else {
+                                printf("System is UNSAFE.\n");
                             }
-                            request_resources(req_pid, request);
                             continue_prompt();
                             break;
                         case 4:
-                            printf("Enter PID of process releasing resources: ");
-                            int rel_pid;
-                            scanf("%d", &rel_pid);
-                            int release[MAX_RESOURCES];
-                            printf("Enter resources to release for %d resources (space separated): ", num_resources);
-                            for (int i = 0; i < num_resources; i++) {
-                                scanf("%d", &release[i]);
-                            }
-                            release_resources(rel_pid, release);
-                            continue_prompt();
-                            break;
-                        case 5:
-                            show_resources();
-                            continue_prompt();
-                            break;
-                        case 6:
-                            // The safety_check function now checks the current global state
-                            if (safety_check()) {
-                                printf("The system is in a safe state after this request.\n");
-                            } else {
-                                printf("The system would be in an unsafe state after this request.\n");
-                            }
-                            continue_prompt();
-                            break;
-                        case 7:
                             printf("Returning to main menu...\n");
                             break;
                         default:
