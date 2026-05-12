@@ -1,3 +1,8 @@
+/**
+ * main_GUI.c - Graphical User Interface for the Mini OS.
+ * Uses GTK+3 and Cairo to provide a visual dashboard for process management,
+ * memory monitoring, scheduling Gantt charts, and Banker's Algorithm.
+ */
 #include <stdio.h>
 #include <gtk/gtk.h>
 #include <cairo.h>
@@ -10,7 +15,7 @@
 #include "../include/banker.h"
 #include "../include/logger.h"
 
-// Global variables
+// Global pointers to UI widgets for state management and updates
 static GtkWidget *window;
 static GtkWidget *Text_output;
 static GtkWidget *quantum_entry;
@@ -27,6 +32,7 @@ static GtkTextBuffer *banker_dialog_buffer = NULL; // Global buffer for Banker's
 static segment segs [MAX_SEGMENTS];
 static int num_segments = 0;
 
+// Utility to generate current system time for logging in the GUI
 static char* get_timestamp() {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
@@ -35,6 +41,7 @@ static char* get_timestamp() {
     return timestamp;
 }
 
+// Functions to redirect logic output to the GUI text view
 static void append_text(const char *text) {
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(Text_output));
     GtkTextIter end;
@@ -82,6 +89,7 @@ static void gui_banker_output_callback(const char *format, ...) {
     gtk_text_buffer_insert_at_cursor(banker_dialog_buffer, "\n", -1); // Add newline
 }
 
+// Synchronizes the memory labels and progress bar with the OS memory state
 static void update_memory_display() {
     int total_memory = MEMORY_SIZE, used = 0;
     pcb *processes = get_process_table();
@@ -104,6 +112,7 @@ static void update_memory_display() {
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(memory_progress_bar), (double)used / total_memory);
 }
 
+// Handles the creation of a new process via a modal dialog
 static void view_processes_creation_dialog(){
     GtkWidget *dialog = gtk_dialog_new_with_buttons("Create Process", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Create", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
     GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -159,10 +168,12 @@ static void view_processes_creation_dialog(){
     gtk_widget_destroy(dialog);
 }
 
+// UI Event Handlers (Signals)
 void on_create_process_clicked(GtkButton *button, gpointer user_data) {
     view_processes_creation_dialog();
 }
 
+// Prints current process table to the output console
 void on_list_processes_clicked(GtkButton *button, gpointer user_data) {
     append_fmt("[%s] Listing processes:", get_timestamp()); // Changed to append_fmt for timestamp
     pcb *processes = get_process_table();
@@ -187,6 +198,7 @@ void on_list_processes_clicked(GtkButton *button, gpointer user_data) {
     update_memory_display();
 }
 
+// Scheduling algorithm triggers
 void on_fcfs_clicked(GtkButton *button, gpointer user_data) {
     num_segments = scheduler_selection(SCHED_FCFS, 0, segs, MAX_SEGMENTS);
     gtk_widget_show_all(gantt_frame);
@@ -215,8 +227,6 @@ void on_rr_clicked(GtkButton *button, gpointer user_data) {
     update_memory_display();
 }
 
-
-
 void on_priority_clicked(GtkButton *button, gpointer user_data) {
     num_segments = scheduler_selection(SCHED_PRIORITY, 0, segs, MAX_SEGMENTS);
     gtk_widget_show_all(gantt_frame);
@@ -227,6 +237,7 @@ void on_priority_clicked(GtkButton *button, gpointer user_data) {
     update_memory_display();
 }
 
+// Logic to remove a process from the system by PID
 void on_delete_process_clicked(GtkButton *button, gpointer user_data) {
     GtkWidget *dialog = gtk_dialog_new_with_buttons("Delete Process", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Delete", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
     GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -256,6 +267,7 @@ void on_delete_process_clicked(GtkButton *button, gpointer user_data) {
     gtk_widget_destroy(dialog);
 }
 
+// Lists allocated memory blocks
 void on_show_memory_clicked(GtkButton *button, gpointer user_data) {
     append_fmt("[%s] Showing memory map", get_timestamp());
     append_text("PID   | Address    | Size (KB)  | Status");
@@ -274,6 +286,7 @@ void on_show_memory_clicked(GtkButton *button, gpointer user_data) {
     update_memory_display();
 }
 
+// Reads and displays the content of the OS log file
 void on_show_logs_clicked(GtkButton *button, gpointer user_data) {
     append_fmt("[%s] Showing system logs", get_timestamp());
     FILE *log_file = fopen("OS_Logs.txt", "r");
@@ -291,6 +304,7 @@ void on_show_logs_clicked(GtkButton *button, gpointer user_data) {
     update_memory_display();
 }
 
+// Banker's Algorithm Setup
 void on_initalize_resources_clicked(GtkButton *button, gpointer user_data) {
     GtkWidget *dialog = gtk_dialog_new_with_buttons("Initialize Resources", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Init", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
     GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -384,6 +398,7 @@ void on_set_max_claim_clicked(GtkButton *button, gpointer user_data) {
     gtk_widget_destroy(dialog);
 }
 
+// Runs the safety algorithm simulation and displays output in a new window
 void on_request_resources_clicked(GtkButton *button, gpointer user_data) {
     GtkWidget *banker_output_dialog = gtk_dialog_new_with_buttons("Banker's Algorithm Simulation Output", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Close", GTK_RESPONSE_CLOSE, NULL);
     gtk_window_set_default_size(GTK_WINDOW(banker_output_dialog), 600, 400);
@@ -422,6 +437,7 @@ void on_request_resources_clicked(GtkButton *button, gpointer user_data) {
     banker_dialog_buffer = NULL; // Clear the global pointer after dialog is destroyed
 }
 
+// Controls the visibility of the Gantt chart drawing area
 void on_toggle_gantt_clicked(GtkButton *button, gpointer user_data) {
     if (gtk_widget_get_visible(gantt_frame)) {
         gtk_widget_hide(gantt_frame);
@@ -438,6 +454,7 @@ void on_terminate_system_clicked(GtkButton *button, gpointer user_data) {
     gtk_main_quit();
 }
 
+// Drawing logic for the Gantt Chart using Cairo
 gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
     int width = gtk_widget_get_allocated_width(widget);
     int height = gtk_widget_get_allocated_height(widget);
@@ -482,12 +499,14 @@ gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
 }
 
 int main(int argc, char *argv[]) {
+    // Core OS initialization
     init_system();
     memory_init();
     log_init();
     log_event("Mini OS initialized successfully.");
 
     gtk_init(&argc, &argv);
+    // Application-wide styling using CSS
 
     // Apply Black and Gray CSS Styling
     GtkCssProvider *provider = gtk_css_provider_new();
@@ -520,6 +539,7 @@ int main(int argc, char *argv[]) {
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(window), vbox);
 
+    // Constructing the UI Panels
     // creation of buttons and other widgets are here, with their respective signal connections to the above callback functions
 
     // 1. Memory Status Panel

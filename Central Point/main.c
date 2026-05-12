@@ -1,3 +1,8 @@
+/**
+ * main.c - Command Line Interface (CLI) for the Mini OS.
+ * Provides a menu-driven interface to manage processes, memory, 
+ * scheduling, and deadlock prevention.
+ */
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -18,6 +23,7 @@ static void cli_banker_output_callback(const char *format, ...) {
 }
 static segment segs [MAX_SEGMENTS];
 
+// Helper to pause execution so the user can read output before clearing the screen
 void continue_prompt(void) {
     while (getchar() != '\n'); // Clear the input buffer
     printf("Press Enter to continue...");
@@ -25,6 +31,7 @@ void continue_prompt(void) {
     printf("\033[H\033[J"); //this will clear the screen after the user presses enter
 }
 
+// Optional screen clearing utility
 void clear_screen(void) {
     printf("would you like to clear the screen? (y/n): ");
     char clear_choice;
@@ -42,6 +49,7 @@ void show_logs(void) {
     show_log();
 }
 
+// Displays the main navigation menu
 void view_menu(void) {
     printf("\n================ Mini OS Menu ===============\n");
     printf(" Welcome to the Mini OS!\n");
@@ -61,6 +69,7 @@ void view_menu(void) {
 
 int main(void) {
     // this is the initialisation of the system, it will call all the init functions for the different modules
+    // Core module initialization
     log_init(); 
     init_system();
     memory_init();
@@ -73,6 +82,7 @@ int main(void) {
     char name[MAX_NAME_LEN];
     sched sched_type;
 
+    // Main execution loop
     while(choice != 9) {
         view_menu();
         printf("Enter your choice: ");
@@ -85,6 +95,7 @@ int main(void) {
 
         switch(choice) {
             case 1:
+                // Process Creation Logic
                 clear_screen();
                 printf("YOU HAVE SELECTED TO CREATE AN EMERGENCY PROCESS\n");
                 printf("Enter process name: ");
@@ -104,6 +115,7 @@ int main(void) {
                 
                 break;
             case 2:
+                // List and potentially delete processes
                 clear_screen();
                 list_of_processes();
                 if(get_process_count() != 0) {
@@ -121,16 +133,19 @@ int main(void) {
 
                 break;
             case 3:
+                // Show current memory allocation map
                 clear_screen();
                 show_memory();
                 continue_prompt();
                 break;
             case 4:
+                // Display system event logs
                 clear_screen();
                 show_logs();
                 continue_prompt();
                 break;
             case 5:
+                // Round Robin Scheduling
                 clear_screen();
                 // Run Scheduler (Round Robin)
                 printf("Enter time quantum: ");
@@ -139,18 +154,21 @@ int main(void) {
                 continue_prompt();
                 break;
             case 6:
+                // FCFS Scheduling
                 clear_screen(); 
                 // Run Scheduler (FCFS)
                 scheduler_selection(SCHED_FCFS, 0, segs, MAX_SEGMENTS);
                 continue_prompt();
                 break;
             case 7:
+                // Priority-based Scheduling
                 clear_screen();
                 // Run Scheduler (Priority)
                  scheduler_selection(SCHED_PRIORITY, 0, segs, MAX_SEGMENTS);
                 continue_prompt();
                 break;
             case 8: 
+                // Banker's Algorithm Sub-menu for Deadlock management
                 dl_choice = 1; // Reset to allow re-entry into the sub-menu
                 while(dl_choice != 4) {
                     clear_screen();
@@ -162,6 +180,7 @@ int main(void) {
                     printf("Enter your choice: ");
                     scanf("%d", &dl_choice);
                     switch(dl_choice) {
+                        // Logic for Resource init, Max claim settings, and Safety check
                         case 1:
                             printf("Enter total units for single resource: ");
                             int total;
