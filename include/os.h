@@ -1,4 +1,3 @@
-//THIS IS THE SHARED HEADER FILE.
 #ifndef OS_H
 #define OS_H
 
@@ -46,7 +45,7 @@ typedef struct {
     int end_time;
 } segment;
 
-//Funtion Prototyps
+//Function Prototypes
 void init_system(void);
 int create_process(const char *name, int burst, int priority, int mem_size);
 void list_of_processes(void);

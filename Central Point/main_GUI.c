@@ -80,7 +80,7 @@ static void gui_banker_output_callback(const char *format, ...) {
         return;
     }
 
-    char buffer[1024]; // Sufficiently large buffer for a single line of output
+    char buffer[1024]; 
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, sizeof(buffer), format, args);
@@ -237,7 +237,7 @@ void on_priority_clicked(GtkButton *button, gpointer user_data) {
     update_memory_display();
 }
 
-// Logic to remove a process from the system by PID
+// this is Logic to remove a process from the system by PID
 void on_delete_process_clicked(GtkButton *button, gpointer user_data) {
     GtkWidget *dialog = gtk_dialog_new_with_buttons("Delete Process", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Delete", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
     GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -556,7 +556,7 @@ int main(int argc, char *argv[]) {
     memory_progress_bar = gtk_progress_bar_new();
     gtk_box_pack_start(GTK_BOX(mem_vbox), memory_progress_bar, FALSE, FALSE, 5);
 
-    // Create a horizontal box to hold Operations and Deadlock side-by-side
+    // this is Creating a horizontal box to hold Operations and Deadlock side-by-side
     GtkWidget *mid_controls_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
     gtk_box_pack_start(GTK_BOX(vbox), mid_controls_hbox, FALSE, FALSE, 5);
 
@@ -604,7 +604,7 @@ int main(int argc, char *argv[]) {
     gantt_frame = gtk_frame_new("Gantt Chart");
     gtk_box_pack_start(GTK_BOX(vbox), gantt_frame, TRUE, TRUE, 5);
     draw_area = gtk_drawing_area_new();
-    gtk_widget_set_size_request(draw_area, 800, 60); // Reduced height to "size 3" equivalent
+    gtk_widget_set_size_request(draw_area, 800, 60); 
     gtk_container_add(GTK_CONTAINER(gantt_frame), draw_area);
     g_signal_connect(draw_area, "draw", G_CALLBACK(on_draw), NULL);
     gtk_widget_hide(gantt_frame); // Hide until we have segments to display
@@ -631,12 +631,12 @@ int main(int argc, char *argv[]) {
     gtk_entry_set_placeholder_text(GTK_ENTRY(quantum_entry), "Enter time quantum");
     gtk_box_pack_start(GTK_BOX(scheduler_hbox), quantum_entry, FALSE, FALSE, 5);
 
-    // Toggle Gantt Chart Button
+    // Toggle Gantt Chart Button..this is because i saw the gant chart was eating a lot of space when it shows uo
     gantt_toggle_btn = gtk_button_new_with_label("Show Gantt Chart");
     g_signal_connect(gantt_toggle_btn, "clicked", G_CALLBACK(on_toggle_gantt_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(scheduler_hbox), gantt_toggle_btn, FALSE, FALSE, 5);
 
-    // 7. Text Output Panel (Moved to bottom and expanded)
+    // 7. Text Output Panel
     GtkWidget *text_frame = gtk_frame_new("System Output");
     gtk_box_pack_start(GTK_BOX(vbox), text_frame, TRUE, TRUE, 5); // TRUE, TRUE to expand and fill
     GtkWidget *scrolled_window = gtk_scrolled_window_new(NULL, NULL);

@@ -18,7 +18,7 @@ static void cli_banker_output_callback(const char *format, ...) {
     va_list args;
     va_start(args, format);
     vprintf(format, args);
-    printf("\n"); // Add newline as printf in banker.c had them
+    printf("\n"); 
     va_end(args);
 }
 static segment segs [MAX_SEGMENTS];
@@ -28,7 +28,7 @@ void continue_prompt(void) {
     while (getchar() != '\n'); // Clear the input buffer
     printf("Press Enter to continue...");
     while (getchar() != '\n');
-    printf("\033[H\033[J"); //this will clear the screen after the user presses enter
+    printf("\033[H\033[J"); //this will clear the screen after the user presses enter...
 }
 
 // Optional screen clearing utility
@@ -172,7 +172,7 @@ int main(void) {
                 dl_choice = 1; // Reset to allow re-entry into the sub-menu
                 while(dl_choice != 4) {
                     clear_screen();
-                    printf("Bankers Algorithm (Deadlock prevention)\n");
+                    printf("Bankers Algorithm (Deadlock Avoidance)\n");
                     printf("1. Initialize\n");
                     printf("2. Set Max Claim\n");
                     printf("3. Run Banker's Simulation\n");

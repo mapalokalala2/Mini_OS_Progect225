@@ -63,7 +63,7 @@ gcc -g -I include "Central Point/main_GUI.c" src/pcb.c src/scheduler.c src/memor
 ```
 
 **To build the CLI Version:**
-```bash
+```cmd
 gcc -g -I include "Central Point/main.c" src/pcb.c src/scheduler.c src/memory.c src/banker.c src/logger.c -o mini_os.exe
 ```
 

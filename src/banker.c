@@ -107,7 +107,7 @@ bool run_banker_simulation(banker_output_callback output_func) {
     }
     available_units = total_units;
 
-    // Perform initial allocation of 2 units (or up to Max Claim)
+    
     if (output_func) output_func("--- Initial Allocation (2 units per process) ---");
     for (int k = 0; k < active_count; k++) {
         int idx = active_indices[k];
@@ -144,6 +144,8 @@ bool run_banker_simulation(banker_output_callback output_func) {
         bool progress_made = false;
         
         // Selection logic: Look for the process with the smallest non-zero need first
+        // it will iterate through the active processes and try to grant resources to the one with the smallest need, as this is often a good heuristic for making progress in the simulation.
+        
         while (true) {
             int idx = -1;
             int min_need = 1000000;

@@ -4,8 +4,10 @@
 #include "../include/memory.h"
 #include "../include/logger.h"
 
-/* Forward declaration for Banker cleanup function */
-extern void banker_release_all(int pid);
+
+extern void banker_release_all(int pid);// extern is a key word used to declare a function that is defined in another file. in this case, it allows the banker.c file 
+                                        // to call the banker_release_all function which is defined in the banker.c file, without causing a compilation error due to 
+                                        // missing function definition. it tells the compiler that the function exists and will be linked during the linking phase of compilation.
 
 static pcb process_table[MAX_PROCESSES];
 static int process_count = 0;

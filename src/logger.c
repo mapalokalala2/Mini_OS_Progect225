@@ -4,7 +4,7 @@
 #include "../include/logger.h"
 
 static const char* LOG_FILE = "OS_Logs.txt";
-static FILE *log_fp = NULL;//log_fp means log file pointer
+static FILE *log_fp = NULL;//log_fp means log file pointer. just incase i may forget what fp stands for in the future.
 
 void log_init(void) {
     log_fp = fopen(LOG_FILE, "a");
