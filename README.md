@@ -33,6 +33,7 @@ Simulate various scheduling algorithms with Gantt Chart visualization:
 * **`Central Point/`**: Main entry points for the application.
     * `main_GUI.c`: The GTK+ 3.0 dashboard implementation.
     * `main.c`: The CLI-based interactive menu.
+    * `run.txt`: Contains code to run in the terminal to compile the project.
 * **`src/`**: Core logic implementations.
     * `pcb.c`: Process Control Block management.
     * `scheduler.c`: CPU scheduling algorithms.
