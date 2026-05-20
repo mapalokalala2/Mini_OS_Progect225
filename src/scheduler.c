@@ -142,7 +142,10 @@ int scheduler_selection(sched sched_type, int time_quantum, segment *segs , int 
         if (tbl[i].pid <= 0){
             continue;
         }
+        // Formula: Turnaround Time = Completion Time - Arrival Time
         int tat = process_complete[i] - tbl[i].arrival_time;
+        
+        // Formula: Waiting Time = Turnaround Time - Burst Time
         int wt = tat - tbl[i].burst_time;
         total_tat += tat;
         total_wt += wt;

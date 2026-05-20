@@ -80,6 +80,8 @@ static bool is_state_safe(int work, const int current_alloc[], const int current
     while (count < active_count) {
         bool found = false;
         for (int i = 0; i < active_count; i++) {
+            // Find an unfinished process whose maximum potential need
+            // can be satisfied by currently available 'work' units.
             int idx = active_indices[i];
             if (!finish_check[idx] && current_need[idx] <= work) {
                 work += current_alloc[idx];

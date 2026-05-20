@@ -22,6 +22,7 @@ typedef enum { // contains the enums for the process states
 } proc_state;
 //
 typedef struct {
+    //this just contians information of the process.
     int pid;
     char name[MAX_NAME_LEN];
     int priority;
