@@ -19,7 +19,7 @@
 #include "../include/logger.h"
 #include "../include/banker.h"
 
-/* 1-Dimensional Banker's Algorithm Data Structures */
+//Dimensional Banker's Algorithm Data Structures
 static int total_units = 0;
 static int available_units = 0;
 static int max_claim[MAX_PROCESSES];
@@ -64,7 +64,7 @@ int set_process_max_claim(int pid, int max) {
     return 0;
 }
 
-/* Helper to perform a standard Banker's safety check on current state */
+//Helper to perform a standard Banker's safety check on current state 
 static bool is_state_safe(int work, const int current_alloc[], const int current_need[], int n_procs, const pcb* table) {
     bool finish_check[MAX_PROCESSES] = {false};
     int count = 0;

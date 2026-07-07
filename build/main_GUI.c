@@ -1,8 +1,7 @@
-/**
- * main_GUI.c - Graphical User Interface for the Mini OS.
- * Uses GTK+3 and Cairo to provide a visual dashboard for process management,
- * memory monitoring, scheduling Gantt charts, and Banker's Algorithm.
- */
+// main_GUI.c - Graphical User Interface for the Mini OS.
+// Uses GTK+3 and Cairo to provide a visual dashboard for process management,
+// memory monitoring, scheduling Gantt charts, and Banker's Algorithm.
+ 
 #include <stdio.h>
 #include <gtk/gtk.h>
 #include <cairo.h>
@@ -110,30 +109,26 @@ gboolean on_draw_memory_gauge(GtkWidget *widget, cairo_t *cr, gpointer user_data
     int available = total_memory - used;
     double fraction = (total_memory > 0) ? (double)used / total_memory : 0.0;
 
-    // Define gauge geometry (semi-circle at the bottom)
+    // Define gauge geometry (semi-circle for the memory status)
     double xc = width / 2.0;
     double yc = height - 20; 
     double radius = MIN(width / 2.0 - 20, height - 30);
 
-    // 1. Draw Background Track (Gray Arc)
     cairo_set_line_width(cr, 15.0);
     cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
     cairo_arc(cr, xc, yc, radius, G_PI, 2 * G_PI); // Semi-circle from left to right
     cairo_set_source_rgb(cr, 0.15, 0.15, 0.2); // Dark grayish-blue
     cairo_stroke(cr);
 
-    // 2. Draw Foreground Track (Used Memory)
     if (fraction > 0.0) {
         cairo_arc(cr, xc, yc, radius, G_PI, G_PI + (G_PI * fraction));
         cairo_set_source_rgb(cr, 0.45, 0.40, 0.95); 
         cairo_stroke(cr);
     }
 
-    // 3. Draw Text Inside the Gauge
-    // Matched the memory status words to the #5CE1E6 theme color (RGB: 0.36, 0.88, 0.90)
     cairo_set_source_rgb(cr, 0.36, 0.88, 0.90);
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 20.0); // Increased font size for memory status
+    cairo_set_font_size(cr, 20.0); 
 
     char text[64];
     cairo_text_extents_t extents;
@@ -465,7 +460,6 @@ void on_request_resources_clicked(GtkButton *button, gpointer user_data) {
     banker_dialog_buffer = NULL; 
 }
 
-// Linked to the new sidebar chart icon
 void on_toggle_gantt_clicked(GtkButton *button, gpointer user_data) {
     if (gtk_widget_get_visible(gantt_frame)) {
         gtk_widget_hide(gantt_frame);
@@ -494,7 +488,6 @@ gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
     }
     double scale = (total_time > 0) ? (double)width / total_time : 1.0;
 
-// Modified the color palette to be duller/muted 
 double color_palette[10][3] = {
     {0.50, 0.48, 0.65}, // Dull Purple-Blue
     {0.45, 0.55, 0.65}, // Dull Cyan-Blue
@@ -536,19 +529,19 @@ static gboolean on_draw_circle_icon(GtkWidget *widget, cairo_t *cr, gpointer use
 
     int w = gtk_widget_get_allocated_width(widget);
     int h = gtk_widget_get_allocated_height(widget);
-    
-    // 1. Clip to a circle
+
+    // this will create a circular clipping region
     cairo_arc(cr, w / 2.0, h / 2.0, MIN(w, h) / 2.0, 0, 2 * G_PI);
     cairo_clip(cr);
 
-    // 2. Scale the image to fit the widget size
+    // this will Scale the image to fit the widget size
     int img_w = gdk_pixbuf_get_width(pixbuf);
     int img_h = gdk_pixbuf_get_height(pixbuf);
     double scale = MIN((double)w / img_w, (double)h / img_h);
 
     cairo_scale(cr, scale, scale);
 
-    // 3. Center the image
+    // this will Center the image
     double x_offset = (w / scale - img_w) / 2.0;
     double y_offset = (h / scale - img_h) / 2.0;
 
@@ -594,14 +587,11 @@ int main(int argc, char *argv[]) {
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css =
         "window, box, grid { background-color: #0F0F14; color: #E0E0E0; }" 
-        /* Sidebar styling updated to match the system background and remove borders */
         ".sidebar-custom { background-color: #0F0F14; border: none; }" 
-        /* Sidebar buttons updated to be transparent, borderless, circular hits */
         ".sidebar-btn { background-color: transparent; border: none; border-radius: 20px; min-width: 40px; min-height: 40px; padding: 0px; background-image: none; box-shadow: none; }" 
         ".sidebar-btn:hover { background-color: rgba(255, 255, 255, 0.1); }" 
         ".sidebar-btn:active { background-color: rgba(255, 255, 255, 0.2); }" 
         "frame { background-color: #171720; border: 1px solid #252530; margin: 5px; border-radius: 12px; }" 
-        /* Updated frame label to uniformly color and increase size of titles */
         "frame label { color: #5CE1E6; font-size: 18px; font-weight: bold; margin-bottom: 4px; padding: 5px; }" 
         "button { background-image: none; background-color: #1D1D26; color: #FFFFFF; border: 1px solid #303040; border-radius: 10px; padding: 8px; }" 
         "button:hover { background-color: #2A2A38; }" 
@@ -624,7 +614,7 @@ int main(int argc, char *argv[]) {
     gtk_window_set_default_size(GTK_WINDOW(window), 1000, 850);
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
-    // --- MAIN LAYOUT (HBox) ---
+    // --- MAIN LAYOUT ---
     GtkWidget *main_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_container_add(GTK_CONTAINER(window), main_hbox);
 
@@ -674,11 +664,9 @@ int main(int argc, char *argv[]) {
     // Title Row
     GtkWidget *title_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     
-    // Increased font size and unified the color to #5CE1E6
     GtkWidget *dash_label = gtk_label_new("<span font_desc='22' weight='bold' foreground='#5CE1E6'>MINI OS DASHBOARD</span>");
     gtk_label_set_use_markup(GTK_LABEL(dash_label), TRUE);
     
-    // Increased font size and unified the color to #5CE1E6
     GtkWidget *welcome_label = gtk_label_new("<span font_desc='22' weight='bold' foreground='#5CE1E6'>WELCOME</span>");
     gtk_label_set_use_markup(GTK_LABEL(welcome_label), TRUE);
     
@@ -694,8 +682,7 @@ int main(int argc, char *argv[]) {
 
     // Sub-Header Row (Home, Create Button, Welcome Icon)
     GtkWidget *sub_header_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-    
-    // Unified color to #5CE1E6 for structural consistency
+
     GtkWidget *home_label = gtk_label_new("<span size='large' weight='bold' foreground='#5CE1E6'>HOME</span>");
     gtk_label_set_use_markup(GTK_LABEL(home_label), TRUE);
     gtk_box_pack_start(GTK_BOX(sub_header_hbox), home_label, FALSE, FALSE, 0);
@@ -743,7 +730,6 @@ int main(int argc, char *argv[]) {
     gtk_container_add(GTK_CONTAINER(scheduler_frame), scheduler_vbox);
     gtk_box_pack_start(GTK_BOX(mid_hbox), scheduler_frame, TRUE, TRUE, 0);
 
-    // Changed FCFS to full name
     btn = gtk_button_new_with_label("First Come First Serve");
     g_signal_connect(btn, "clicked", G_CALLBACK(on_fcfs_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(scheduler_vbox), btn, FALSE, FALSE, 5);
@@ -752,7 +738,7 @@ int main(int argc, char *argv[]) {
     gtk_box_pack_start(GTK_BOX(scheduler_vbox), btn, FALSE, FALSE, 5);
     
     GtkWidget *rr_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    // Changed RR to full name
+  
     btn = gtk_button_new_with_label("Round Robin");
     g_signal_connect(btn, "clicked", G_CALLBACK(on_rr_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(rr_hbox), btn, TRUE, TRUE, 0);
@@ -762,7 +748,6 @@ int main(int argc, char *argv[]) {
     gtk_box_pack_start(GTK_BOX(rr_hbox), quantum_entry, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(scheduler_vbox), rr_hbox, FALSE, FALSE, 5);
 
-    // Column 3: Bankers Algorithm
     GtkWidget *deadlock_frame = gtk_frame_new("Bankers Algorithm");
     GtkWidget *deadlock_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_set_border_width(GTK_CONTAINER(deadlock_vbox), 10);
@@ -787,7 +772,7 @@ int main(int argc, char *argv[]) {
     g_signal_connect(draw_area, "draw", G_CALLBACK(on_draw), NULL);
     gtk_box_pack_start(GTK_BOX(content_vbox), gantt_frame, FALSE, FALSE, 5);
 
-    // --- BOTTOM SECTION (Grid: 2 Columns for Output, 1 for Memory = 2:1 Ratio) ---
+    // --- BOTTOM SECTION  ---
     GtkWidget *bottom_grid = gtk_grid_new();
     gtk_grid_set_column_spacing(GTK_GRID(bottom_grid), 15);
     gtk_grid_set_column_homogeneous(GTK_GRID(bottom_grid), TRUE); // Forces columns to share equal space
@@ -808,7 +793,7 @@ int main(int argc, char *argv[]) {
     gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(Text_output), GTK_WRAP_NONE);
     gtk_container_add(GTK_CONTAINER(scrolled_window), Text_output);
 
-    // Memory Status Panel (Spans 1 column) -> Custom Semi-Circle Gauge
+    // Memory Status Panel 
     GtkWidget *mem_frame = gtk_frame_new("Memory Status");
     memory_draw_area = gtk_drawing_area_new();
     gtk_widget_set_hexpand(mem_frame, TRUE);
