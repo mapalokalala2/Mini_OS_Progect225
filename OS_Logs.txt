@@ -1,19 +1,15 @@
 ==========Logger initalized==========
-[2026-05-20 11 : 42 : 25]Mini OS initialized successfully.
-[2026-05-20 11 : 42 : 26]Mini OS Dashboard initialized successfully.
+[2026-07-07 23 : 14 : 19]Mini OS initialized successfully.
+[2026-07-07 23 : 14 : 20]Mini OS Dashboard initialized successfully.
+[2026-07-07 23 : 15 : 24]Memory allocated: 123 bytes for PID 1 at address 0
+[2026-07-07 23 : 15 : 24]process created successfully
+[2026-07-07 23 : 15 : 32]scheduler done. Time = 12 utilisation = 100.00%
+[2026-07-07 23 : 15 : 45]Mini OS Dashboard: Manual termination requested.
+=====LOGGER SHUTTING DOWN=======
+
 ==========Logger initalized==========
-[2026-07-07 11 : 44 : 33]Mini OS initialized successfully.
-[2026-07-07 11 : 44 : 39]Mini OS Dashboard initialized successfully.
-[2026-07-07 12 : 15 : 46]Memory allocated: 21 bytes for PID 1 at address 0
-[2026-07-07 12 : 15 : 46]process created successfully
-[2026-07-07 12 : 16 : 02]Memory allocated: 123 bytes for PID 2 at address 21
-[2026-07-07 12 : 16 : 02]process created successfully
-[2026-07-07 12 : 16 : 50]scheduler done. Time = 27 utilisation = 100.00%
-==========Logger initalized==========
-[2026-07-07 12 : 51 : 12]Mini OS initialized successfully.
-[2026-07-07 12 : 51 : 19]Mini OS Dashboard initialized successfully.
-[2026-07-07 12 : 52 : 05]Memory allocated: 78 bytes for PID 1 at address 0
-[2026-07-07 12 : 52 : 05]process created successfully
-[2026-07-07 12 : 52 : 20]Memory allocated: 45 bytes for PID 2 at address 78
-[2026-07-07 12 : 52 : 20]process created successfully
-[2026-07-07 12 : 52 : 22]scheduler done. Time = 45 utilisation = 100.00%
+[2026-07-07 23 : 16 : 16]Mini OS initialized successfully.
+[2026-07-07 23 : 16 : 17]Mini OS Dashboard initialized successfully.
+[2026-07-07 23 : 18 : 51]Mini OS Dashboard: Manual termination requested.
+=====LOGGER SHUTTING DOWN=======
+

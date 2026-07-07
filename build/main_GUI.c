@@ -15,6 +15,7 @@
 #include "../include/memory.h"
 #include "../include/banker.h"
 #include "../include/logger.h"
+#include <gtk/gtkbutton.h>
 
 // Global pointers to UI widgets for state management and updates
 static GtkWidget *window;
@@ -22,7 +23,7 @@ static GtkWidget *Text_output;
 static GtkWidget *quantum_entry;
 static GtkWidget *draw_area;
 static GtkWidget *gantt_frame;
-static GtkWidget *memory_draw_area; // Replaces the labels/progress bar for the custom gauge
+static GtkWidget *memory_draw_area; 
 static GtkTextBuffer *banker_dialog_buffer = NULL; 
 
 static segment segs [MAX_SEGMENTS];
@@ -91,7 +92,7 @@ static void update_memory_display() {
     }
 }
 
-// Custom Cairo Drawing for the Semi-Circle Memory Gauge
+// this is the Cairo Drawing for the Semi-Circle Memory Gauge. 
 gboolean on_draw_memory_gauge(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
     int width = gtk_widget_get_allocated_width(widget);
     int height = gtk_widget_get_allocated_height(widget);
@@ -124,14 +125,15 @@ gboolean on_draw_memory_gauge(GtkWidget *widget, cairo_t *cr, gpointer user_data
     // 2. Draw Foreground Track (Used Memory)
     if (fraction > 0.0) {
         cairo_arc(cr, xc, yc, radius, G_PI, G_PI + (G_PI * fraction));
-        cairo_set_source_rgb(cr, 0.35, 0.35, 0.48); // Lighter phantom blue
+        cairo_set_source_rgb(cr, 0.45, 0.40, 0.95); 
         cairo_stroke(cr);
     }
 
     // 3. Draw Text Inside the Gauge
-    cairo_set_source_rgb(cr, 0.8, 0.8, 0.8);
+    // Matched the memory status words to the #5CE1E6 theme color (RGB: 0.36, 0.88, 0.90)
+    cairo_set_source_rgb(cr, 0.36, 0.88, 0.90);
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 13.0);
+    cairo_set_font_size(cr, 20.0); // Increased font size for memory status
 
     char text[64];
     cairo_text_extents_t extents;
@@ -146,12 +148,12 @@ gboolean on_draw_memory_gauge(GtkWidget *widget, cairo_t *cr, gpointer user_data
 
     snprintf(text, sizeof(text), "Used: %d KB", used);
     cairo_text_extents(cr, text, &extents);
-    cairo_move_to(cr, xc - (extents.width / 2), text_start_y + 20);
+    cairo_move_to(cr, xc - (extents.width / 2), text_start_y + 26);
     cairo_show_text(cr, text);
 
     snprintf(text, sizeof(text), "Available: %d KB", available);
     cairo_text_extents(cr, text, &extents);
-    cairo_move_to(cr, xc - (extents.width / 2), text_start_y + 40);
+    cairo_move_to(cr, xc - (extents.width / 2), text_start_y + 52);
     cairo_show_text(cr, text);
 
     return FALSE;
@@ -492,10 +494,20 @@ gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
     }
     double scale = (total_time > 0) ? (double)width / total_time : 1.0;
 
-    double color_palette[10][3] = {
-        {0.2, 0.2, 0.2}, {0.3, 0.3, 0.3}, {0.4, 0.4, 0.4}, {0.5, 0.5, 0.5}, {0.6, 0.6, 0.6},
-        {0.25, 0.25, 0.25}, {0.35, 0.35, 0.35}, {0.45, 0.45, 0.45}, {0.55, 0.55, 0.55}, {0.65, 0.65, 0.65}
-    };
+// Modified the color palette to be duller/muted 
+double color_palette[10][3] = {
+    {0.50, 0.48, 0.65}, // Dull Purple-Blue
+    {0.45, 0.55, 0.65}, // Dull Cyan-Blue
+    {0.48, 0.65, 0.55}, // Dull Mint
+    {0.75, 0.55, 0.55}, // Dull Red
+    {0.70, 0.60, 0.50}, // Dull Orange
+    {0.55, 0.50, 0.65}, // Dull Lavender
+    {0.50, 0.55, 0.65}, // Dull Steel Blue
+    {0.70, 0.50, 0.60}, // Dull Pink
+    {0.55, 0.65, 0.55}, // Dull Sage
+    {0.65, 0.65, 0.45}  // Dull Yellow
+};
+
     int color_index = 0;
     int y = height / 4;
     for (int i = 0; i < num_segments; i++) {
@@ -518,6 +530,58 @@ gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
     return FALSE;
 }
 
+static gboolean on_draw_circle_icon(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
+    GdkPixbuf *pixbuf = g_object_get_data(G_OBJECT(widget), "pixbuf");
+    if (!pixbuf) return FALSE;
+
+    int w = gtk_widget_get_allocated_width(widget);
+    int h = gtk_widget_get_allocated_height(widget);
+    
+    // 1. Clip to a circle
+    cairo_arc(cr, w / 2.0, h / 2.0, MIN(w, h) / 2.0, 0, 2 * G_PI);
+    cairo_clip(cr);
+
+    // 2. Scale the image to fit the widget size
+    int img_w = gdk_pixbuf_get_width(pixbuf);
+    int img_h = gdk_pixbuf_get_height(pixbuf);
+    double scale = MIN((double)w / img_w, (double)h / img_h);
+
+    cairo_scale(cr, scale, scale);
+
+    // 3. Center the image
+    double x_offset = (w / scale - img_w) / 2.0;
+    double y_offset = (h / scale - img_h) / 2.0;
+
+    gdk_cairo_set_source_pixbuf(cr, pixbuf, x_offset, y_offset);
+    cairo_paint(cr);
+
+    return FALSE;
+}
+
+static GtkWidget* create_image_from_file(const char *filename) {
+    GError *error = NULL;
+    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(filename, &error);
+    
+    if (!pixbuf) {
+        fprintf(stderr, "Could not load image '%s': %s\n", filename, error ? error->message : "Unknown error");
+        if (error) g_error_free(error);
+        return gtk_image_new();
+    }
+
+    // Create a DrawingArea widget which we will use to draw our circle
+    GtkWidget *draw_area = gtk_drawing_area_new();
+    gtk_widget_set_size_request(draw_area, 40, 40); // Sets icon size
+
+    // Associate the pixbuf with this widget so the draw function can use it
+    g_object_set_data_full(G_OBJECT(draw_area), "pixbuf", pixbuf, g_object_unref);
+    
+    // Connect the "draw" signal
+    g_signal_connect(draw_area, "draw", G_CALLBACK(on_draw_circle_icon), NULL);
+
+    return draw_area;
+}
+
+
 int main(int argc, char *argv[]) {
     init_system();
     memory_init();
@@ -526,20 +590,26 @@ int main(int argc, char *argv[]) {
 
     gtk_init(&argc, &argv);
 
-    // Apply CSS Styling with Rounded Edges added
+    
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css =
-        "window, box, grid { background-color: #0F0F1A; color: #BBBBBB; }" 
-        "#sidebar { background-color: #05050F; border-right: 1px solid #3A3A4A; }" 
-        "frame { background-color: #1A1A2A; border: 1px solid #3A3A4A; margin: 5px; border-radius: 12px; }" /* Rounded frames */
-        "frame label { color: #BBBBBB; font-weight: bold; margin-bottom: 2px; }" 
-        "button { background-image: none; background-color: #2A2A3A; color: #DDDDDD; border: 1px solid #4A4A5A; border-radius: 8px; padding: 6px; }" /* Rounded buttons */
-        "button:hover { background-color: #3A3A4A; }" 
-        "button:active { background-color: #1A1A2A; }" 
-        "entry { background-color: #20202A; color: #DDDDDD; border: 1px solid #4A4A5A; caret-color: white; border-radius: 4px; }" 
-        "textview text { background-color: #05050F; color: #B0B0B0; font-family: monospace; }" 
-        "label { color: #BBBBBB; }" 
-        "separator { border-color: #3A3A4A; }"; // Styling for the new horizontal line
+        "window, box, grid { background-color: #0F0F14; color: #E0E0E0; }" 
+        /* Sidebar styling updated to match the system background and remove borders */
+        ".sidebar-custom { background-color: #0F0F14; border: none; }" 
+        /* Sidebar buttons updated to be transparent, borderless, circular hits */
+        ".sidebar-btn { background-color: transparent; border: none; border-radius: 20px; min-width: 40px; min-height: 40px; padding: 0px; background-image: none; box-shadow: none; }" 
+        ".sidebar-btn:hover { background-color: rgba(255, 255, 255, 0.1); }" 
+        ".sidebar-btn:active { background-color: rgba(255, 255, 255, 0.2); }" 
+        "frame { background-color: #171720; border: 1px solid #252530; margin: 5px; border-radius: 12px; }" 
+        /* Updated frame label to uniformly color and increase size of titles */
+        "frame label { color: #5CE1E6; font-size: 18px; font-weight: bold; margin-bottom: 4px; padding: 5px; }" 
+        "button { background-image: none; background-color: #1D1D26; color: #FFFFFF; border: 1px solid #303040; border-radius: 10px; padding: 8px; }" 
+        "button:hover { background-color: #2A2A38; }" 
+        "button:active { background-color: #15151A; }" 
+        "entry { background-color: #0F0F14; color: #FFFFFF; border: 1px solid #303040; border-radius: 8px; }" 
+        "textview text { background-color: #07070A; color: #A0A0B0; font-family: monospace; }" 
+        "separator { border-color: #252530; }";
+
 
     gtk_css_provider_load_from_data(provider, css, -1, NULL);
     gtk_style_context_add_provider_for_screen(
@@ -558,21 +628,27 @@ int main(int argc, char *argv[]) {
     GtkWidget *main_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_container_add(GTK_CONTAINER(window), main_hbox);
 
-    // --- LEFT SIDEBAR (Widened) ---
+    // --- LEFT SIDEBAR ---
     GtkWidget *sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 15);
-    gtk_widget_set_name(sidebar, "sidebar"); 
-    gtk_widget_set_size_request(sidebar, 100, -1); // Increased width 
+    
+    GtkStyleContext *context = gtk_widget_get_style_context(sidebar);
+    gtk_style_context_add_class(context, "sidebar-custom");
+    gtk_widget_set_app_paintable(sidebar, TRUE); 
+
+    gtk_widget_set_size_request(sidebar, 100, -1); 
     gtk_container_set_border_width(GTK_CONTAINER(sidebar), 10);
     gtk_box_pack_start(GTK_BOX(main_hbox), sidebar, FALSE, FALSE, 0);
 
     GtkWidget *home_btn = gtk_button_new();
-    GtkWidget *home_img = gtk_image_new_from_file("home_icon.jpg");
+    GtkWidget *home_img = create_image_from_file("assets/home_icon.png");
     gtk_button_set_image(GTK_BUTTON(home_btn), home_img);
+    gtk_style_context_add_class(gtk_widget_get_style_context(home_btn), "sidebar-btn"); // Apply circular style
     gtk_box_pack_start(GTK_BOX(sidebar), home_btn, FALSE, FALSE, 5);
 
     GtkWidget *chart_btn = gtk_button_new();
-    GtkWidget *chart_img = gtk_image_new_from_file("chart_icon.jpg");
+    GtkWidget *chart_img = create_image_from_file("assets/graph_icon.png");
     gtk_button_set_image(GTK_BUTTON(chart_btn), chart_img);
+    gtk_style_context_add_class(gtk_widget_get_style_context(chart_btn), "sidebar-btn"); // Apply circular style
     g_signal_connect(chart_btn, "clicked", G_CALLBACK(on_toggle_gantt_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(sidebar), chart_btn, FALSE, FALSE, 5);
 
@@ -580,8 +656,9 @@ int main(int argc, char *argv[]) {
     gtk_box_pack_start(GTK_BOX(sidebar), sidebar_spacer, TRUE, TRUE, 0);
 
     GtkWidget *power_btn = gtk_button_new();
-    GtkWidget *power_img = gtk_image_new_from_file("power_icon.jpg");
+    GtkWidget *power_img = create_image_from_file("assets/power_icon.png");
     gtk_button_set_image(GTK_BUTTON(power_btn), power_img);
+    gtk_style_context_add_class(gtk_widget_get_style_context(power_btn), "sidebar-btn"); // Apply circular style
     g_signal_connect(power_btn, "clicked", G_CALLBACK(on_terminate_system_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(sidebar), power_btn, FALSE, FALSE, 5);
 
@@ -596,9 +673,13 @@ int main(int argc, char *argv[]) {
 
     // Title Row
     GtkWidget *title_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-    GtkWidget *dash_label = gtk_label_new("<span size='x-large' weight='bold'>MINI OS DASHBOARD</span>");
+    
+    // Increased font size and unified the color to #5CE1E6
+    GtkWidget *dash_label = gtk_label_new("<span font_desc='22' weight='bold' foreground='#5CE1E6'>MINI OS DASHBOARD</span>");
     gtk_label_set_use_markup(GTK_LABEL(dash_label), TRUE);
-    GtkWidget *welcome_label = gtk_label_new("<span size='large'>WELCOME</span>");
+    
+    // Increased font size and unified the color to #5CE1E6
+    GtkWidget *welcome_label = gtk_label_new("<span font_desc='22' weight='bold' foreground='#5CE1E6'>WELCOME</span>");
     gtk_label_set_use_markup(GTK_LABEL(welcome_label), TRUE);
     
     gtk_box_pack_start(GTK_BOX(title_hbox), dash_label, FALSE, FALSE, 0);
@@ -613,18 +694,20 @@ int main(int argc, char *argv[]) {
 
     // Sub-Header Row (Home, Create Button, Welcome Icon)
     GtkWidget *sub_header_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-    GtkWidget *home_label = gtk_label_new("<span size='large' weight='bold'>HOME</span>");
+    
+    // Unified color to #5CE1E6 for structural consistency
+    GtkWidget *home_label = gtk_label_new("<span size='large' weight='bold' foreground='#5CE1E6'>HOME</span>");
     gtk_label_set_use_markup(GTK_LABEL(home_label), TRUE);
     gtk_box_pack_start(GTK_BOX(sub_header_hbox), home_label, FALSE, FALSE, 0);
 
     GtkWidget *create_btn = gtk_button_new_with_label("+ Create Process");
     g_signal_connect(create_btn, "clicked", G_CALLBACK(on_create_process_clicked), NULL);
-    gtk_box_pack_start(GTK_BOX(sub_header_hbox), create_btn, FALSE, FALSE, 0); // Placed next to HOME
+    gtk_box_pack_start(GTK_BOX(sub_header_hbox), create_btn, FALSE, FALSE, 0); 
 
     GtkWidget *sub_spacer = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(sub_header_hbox), sub_spacer, TRUE, TRUE, 0);
 
-    GtkWidget *welcome_icon = gtk_image_new_from_file("welcome_icon.jpg"); // New Welcome Icon
+    GtkWidget *welcome_icon = create_image_from_file("assets/dashboard_icon.png");
     gtk_box_pack_start(GTK_BOX(sub_header_hbox), welcome_icon, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(header_vbox), sub_header_hbox, FALSE, FALSE, 0);
 
@@ -660,7 +743,8 @@ int main(int argc, char *argv[]) {
     gtk_container_add(GTK_CONTAINER(scheduler_frame), scheduler_vbox);
     gtk_box_pack_start(GTK_BOX(mid_hbox), scheduler_frame, TRUE, TRUE, 0);
 
-    btn = gtk_button_new_with_label("FCFS");
+    // Changed FCFS to full name
+    btn = gtk_button_new_with_label("First Come First Serve");
     g_signal_connect(btn, "clicked", G_CALLBACK(on_fcfs_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(scheduler_vbox), btn, FALSE, FALSE, 5);
     btn = gtk_button_new_with_label("Priority Scheduling");
@@ -668,7 +752,8 @@ int main(int argc, char *argv[]) {
     gtk_box_pack_start(GTK_BOX(scheduler_vbox), btn, FALSE, FALSE, 5);
     
     GtkWidget *rr_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    btn = gtk_button_new_with_label("RR");
+    // Changed RR to full name
+    btn = gtk_button_new_with_label("Round Robin");
     g_signal_connect(btn, "clicked", G_CALLBACK(on_rr_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(rr_hbox), btn, TRUE, TRUE, 0);
     quantum_entry = gtk_entry_new();
