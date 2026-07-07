@@ -345,7 +345,7 @@ void on_initalize_resources_clicked(GtkButton *button, gpointer user_data) {
     gtk_container_set_border_width(GTK_CONTAINER(hbox), 20);
     gtk_box_pack_start(GTK_BOX(content_area), hbox, TRUE, TRUE, 0);
 
-    gtk_box_pack_start(GTK_BOX(hbox), gtk_label_new("Total Units (1D):"), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), gtk_label_new("Total Units:"), FALSE, FALSE, 0);
     GtkWidget *entry = gtk_entry_new();
     gtk_entry_set_text(GTK_ENTRY(entry), "10");
     gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);

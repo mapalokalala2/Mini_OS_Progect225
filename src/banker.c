@@ -42,8 +42,8 @@ void resource_init(int total, banker_output_callback output_func) {
     memset(allocation, 0, sizeof(allocation));
     memset(need, 0, sizeof(need));
     memset(finished, 0, sizeof(finished));
-    log_event("Banker's Algorithm initialized with %d total units (1D Model).", total); // Keep system log
-    if (output_func) output_func("Banker's Algorithm initialized with %d total units (1D Model).", total); // Output to GUI/CLI
+    log_event("Banker's Algorithm initialized with %d total units ", total); // Keep system log
+    if (output_func) output_func("Banker's Algorithm initialized with %d total units ", total); // Output to GUI/CLI
 }
 
 int set_process_max_claim(int pid, int max) {

@@ -13,3 +13,41 @@
 [2026-07-07 23 : 18 : 51]Mini OS Dashboard: Manual termination requested.
 =====LOGGER SHUTTING DOWN=======
 
+==========Logger initalized==========
+[2026-07-08 00 : 42 : 02]Mini OS initialized successfully.
+[2026-07-08 00 : 42 : 10]Mini OS Dashboard initialized successfully.
+[2026-07-08 00 : 44 : 30]Memory allocated: 123 bytes for PID 1 at address 0
+[2026-07-08 00 : 44 : 30]process created successfully
+[2026-07-08 00 : 44 : 57]Memory allocated: 234 bytes for PID 2 at address 123
+[2026-07-08 00 : 44 : 57]process created successfully
+[2026-07-08 00 : 45 : 24]Memory allocated: 123 bytes for PID 3 at address 357
+[2026-07-08 00 : 45 : 24]process created successfully
+[2026-07-08 00 : 46 : 00]Memory allocated: 345 bytes for PID 4 at address 480
+[2026-07-08 00 : 46 : 00]process created successfully
+[2026-07-08 00 : 46 : 53]Memory allocated: 70 bytes for PID 5 at address 825
+[2026-07-08 00 : 46 : 53]process created successfully
+==========Logger initalized==========
+[2026-07-08 00 : 47 : 17]Mini OS initialized successfully.
+[2026-07-08 00 : 47 : 19]Mini OS Dashboard initialized successfully.
+[2026-07-08 00 : 47 : 36]Memory allocated: 123 bytes for PID 1 at address 0
+[2026-07-08 00 : 47 : 36]process created successfully
+[2026-07-08 00 : 48 : 03]Memory allocated: 234 bytes for PID 2 at address 123
+[2026-07-08 00 : 48 : 03]process created successfully
+[2026-07-08 00 : 48 : 53]Memory allocated: 40 bytes for PID 3 at address 357
+[2026-07-08 00 : 48 : 53]process created successfully
+[2026-07-08 00 : 52 : 46]Banker's Algorithm initialized with 10 total units (1D Model).
+[2026-07-08 00 : 53 : 04]Max claim set for PID 1: 2. (Used=0, Need=2)
+[2026-07-08 00 : 53 : 04]Max claim set for PID 2: 3. (Used=0, Need=3)
+[2026-07-08 00 : 53 : 04]Max claim set for PID 3: 7. (Used=0, Need=7)
+[2026-07-08 00 : 53 : 07]Simulation ended: UNSAFE state / Deadlock.
+[2026-07-08 00 : 54 : 07]Banker's Algorithm initialized with 10 total units (1D Model).
+[2026-07-08 00 : 54 : 19]Max claim set for PID 1: 2. (Used=0, Need=2)
+[2026-07-08 00 : 54 : 19]Max claim set for PID 2: 4. (Used=0, Need=4)
+[2026-07-08 00 : 54 : 19]Max claim set for PID 3: 5. (Used=0, Need=5)
+[2026-07-08 00 : 54 : 20]Simulation ended: UNSAFE state / Deadlock.
+[2026-07-08 00 : 54 : 49]Banker's Algorithm initialized with 20 total units (1D Model).
+[2026-07-08 00 : 55 : 01]Max claim set for PID 1: 8. (Used=0, Need=8)
+[2026-07-08 00 : 55 : 01]Max claim set for PID 2: 4. (Used=0, Need=4)
+[2026-07-08 00 : 55 : 01]Max claim set for PID 3: 6. (Used=0, Need=6)
+[2026-07-08 00 : 55 : 04]Simulation ended: All processes finished successfully.
+[2026-07-08 00 : 58 : 12]scheduler done. Time = 48 utilisation = 100.00%
